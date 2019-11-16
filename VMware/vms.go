@@ -44,7 +44,8 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 	var vms2 []mo.VirtualMachine
 	//err = v.Retrieve(ctx, []string{"name"}, []string{}, &vms2)
 	kind := []string{"VirtualMachine"}
-	err = v.RetrieveWithFilter(ctx, kind, []string{"name", "summary", "snapshot"}, &vms2, f)
+
+	err = v.RetrieveWithFilter(ctx, kind, []string{"name", "summary", "snapshot", "tag"}, &vms2, f)
 	if err != nil {
 		if err.Error() == "object references is empty" {
 			var s string
@@ -62,6 +63,8 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 		return fmt.Errorf("expected single vm, got %v\n%v", len(vms2), vms2)
 	}
 	item := vms2[0]
+
+	fmt.Printf("%+v\n", item.Summary)
 
 	vm, mets, err := c.vmMetricS(f)
 	if err != nil {

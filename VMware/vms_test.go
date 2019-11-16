@@ -28,7 +28,9 @@ func TestClient_vmSummary(t *testing.T) {
 		//{"1", &url.URL{}, args{"name", "1", "", "", false}, false},
 		//{"2", &url.URL{}, args{"self", "vm-27", "", "", false}, false},
 		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
-		{"4", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
+		//{"4", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
+		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", true}, false},
+		//{"6", u, args{"tags", "windows", "prtg@heynes.local", ".l3tm31n", true}, false},
 	}
 	//	debug = true
 	for _, tt := range tests {
@@ -37,7 +39,7 @@ func TestClient_vmSummary(t *testing.T) {
 			if err != nil {
 				t.Errorf("%+v", err)
 			}
-			f := property.Filter{tt.args.searchType: "*" + tt.args.searchItem}
+			f := property.Filter{tt.args.searchType: tt.args.searchItem}
 			lim := &LimitsStruct{}
 			err = c.VmSummary(f, lim, time.Hour, tt.args.txt)
 			if (err != nil) && !tt.wantErr {
