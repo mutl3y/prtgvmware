@@ -1,10 +1,9 @@
 name: Build and Release
-env:
-  version: v0.9
+
 on:
   push:
     branches:
-      - master
+      - v1.0
     tags:
       - Release
 jobs:
@@ -68,7 +67,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: v0.1
+          release_name: v1.0
           body: |
             Changes in this Release
             - testing wworkflow
