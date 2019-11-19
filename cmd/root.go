@@ -70,6 +70,9 @@ func init() {
 	rootCmd.PersistentFlags().Float64("MaxWarn", 0, "")
 	rootCmd.PersistentFlags().Float64("MinErr", 0, "")
 	rootCmd.PersistentFlags().Float64("MaxErr", 0, "")
+	rootCmd.PersistentFlags().StringP("Name", "n", "", "name of vm, supports *partofname*")
+	rootCmd.PersistentFlags().StringP("Moid", "m", "", "exact id of vm, e.g. vm-12")
+	rootCmd.PersistentFlags().StringSliceP("Tags", "t", []string{}, "slice of tags to include")
 }
 
 // initConfig reads in config file and ENV variables if set.

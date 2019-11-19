@@ -8,9 +8,11 @@ import (
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/performance"
 	"github.com/vmware/govmomi/property"
+	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
+	"log"
 	"strings"
 	"time"
 )
@@ -45,7 +47,9 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 	//err = v.Retrieve(ctx, []string{"name"}, []string{}, &vms2)
 	kind := []string{"VirtualMachine"}
 
-	err = v.RetrieveWithFilter(ctx, kind, []string{"name", "summary", "snapshot", "tag"}, &vms2, f)
+	err = v.RetrieveWithFilter(ctx, kind, []string{"name", "summary", "snapshot"}, &vms2, f)
+
+	printJson()
 	if err != nil {
 		if err.Error() == "object references is empty" {
 			var s string
@@ -57,15 +61,25 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 			}
 			return fmt.Errorf("mo match using property filter %v", s)
 		}
-		return fmt.Errorf("vmsummary retrieve %v", err)
+
+		return fmt.Errorf("vmsummary retrieve %v %v", f, err)
 	}
+
 	if len(vms2) != 1 {
-		return fmt.Errorf("expected single vm, got %v\n%v", len(vms2), vms2)
+		type vmFailList struct {
+			name, moid string
+		}
+		out := make([]vmFailList, 0, 10)
+		for _, v := range vms2 {
+			out = append(out, vmFailList{v.Name, v.Self.Value})
+
+		}
+
+		return fmt.Errorf("expected a single vm, got %+v", out)
 	}
+
 	item := vms2[0]
-
-	fmt.Printf("%+v\n", item.Summary)
-
+	//	printJson(item)
 	vm, mets, err := c.vmMetricS(f)
 	if err != nil {
 		return err
@@ -138,28 +152,31 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 }
 
 //SnapShotsOlderThan
-// prints every vm
+// prints every vm unless using tags
+// tag slice of tags to check
 // txt to display results in json
 // timeRange exclude snapshots younger than time.duration, set to 0 for all
-func (c *Client) SnapShotsOlderThan(f property.Filter, lim *LimitsStruct, age time.Duration, txt bool) error {
+func (c *Client) SnapShotsOlderThan(f property.Filter, tag []string, lim *LimitsStruct, age time.Duration, txt bool) (err error) {
 	start := time.Now()
 	ctx := context.Background()
 	m := view.NewManager(c.c)
 
 	v, err := m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
 	if err != nil {
-		return err
+		return
 	}
 
 	defer func() { _ = v.Destroy(ctx) }()
 	var vms []mo.VirtualMachine
 	err = v.RetrieveWithFilter(ctx, []string{"VirtualMachine"}, []string{"snapshot", "name"}, &vms, f)
 	if err != nil {
-		return err
+		return
 	}
 
 	pr := NewPrtgData("snapshots")
+	manager := tags.NewManager(c.r)
 
+vmLoop:
 	for _, v := range vms {
 		now := time.Now()
 		b := now.Add(-age)
@@ -167,32 +184,38 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, lim *LimitsStruct, age ti
 		if v.Snapshot != nil {
 			co, err = snapshotCount(b, v.Snapshot.RootSnapshotList)
 			if err != nil {
-				return fmt.Errorf("snapcount 1 %v", err)
+				return
 			}
 		}
 
-		stat := fmt.Sprintf("%v_%v", v.Self.Value, v.Name)
-		err = pr.Add(stat, "One", co, lim)
+		attached, err := manager.GetAttachedTags(context.Background(), v.Reference())
+		if err != nil {
+			return err
+		}
+
+		if len(tag) != 0 {
+			var found bool
+			for _, t := range attached {
+				found = tagCheck(t.Name, tag)
+			}
+			if !found {
+				continue vmLoop
+			}
+
+			// if using tags only return stats for hosts that have tag
+			stat := fmt.Sprintf("%v_%v", v.Self.Value, v.Name)
+			err = pr.Add(stat, "One", co, lim)
+		} else {
+			// no tags specified, return everything
+			stat := fmt.Sprintf("%v_%v", v.Self.Value, v.Name)
+			err = pr.Add(stat, "One", co, lim)
+		}
 
 	}
-	err = pr.Print(start, txt)
-	return err
 
-	//for _, v := range vms {
-	//	b := time.Now()
-	//	co, err := snapshotCount(b, v.Snapshot.RootSnapshotList)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	rtn = append(rtn, Snapshot{
-	//		host:  v.ManagedEntity.ExtensibleManagedObject.Self.Value,
-	//		count: co,
-	//	})
-	//	fmt.Printf("%v snapshots found before %v %v  \n", v.ManagedEntity.ExtensibleManagedObject.Self, b.Truncate(time.Second),co)
-	//
-	//}
-	//return nil
+	err = pr.Print(start, txt)
+	return
+
 }
 
 func (c *Client) vmMetricS(filter property.Filter) (vm string, m map[string]Prtgitem, err error) {
@@ -272,7 +295,7 @@ func (c *Client) vmMetricS(filter property.Filter) (vm string, m map[string]Prtg
 				}
 				m[v.Name] = Prtgitem{
 					Value: st,
-					Unit:  VmmettypePrtg(units),
+					Unit:  VmMetType(units),
 				}
 			}
 		}
@@ -397,7 +420,7 @@ func (c *Client) dsMetrics(path string) (ds string, m map[string]Prtgitem, err e
 	return dso.Name(), nil, err
 }
 
-func VmmettypePrtg(k string) string {
+func VmMetType(k string) string {
 	const (
 		BytesBandwidth string = "BytesBandwidth"
 		BytesDisk      string = "BytesDisk"
@@ -502,4 +525,24 @@ func singleStat(stat interface{}) (interface{}, error) {
 	}
 
 	return rtnStat, nil
+}
+
+func printJson(i ...interface{}) {
+	for _, v := range i {
+		b, err := json.MarshalIndent(v, "", "    ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%+v\n", string(b))
+	}
+}
+
+func tagCheck(n string, t []string) (found bool) {
+	for _, check := range t {
+		if n == check {
+			return true
+		}
+	}
+
+	return
 }

@@ -7,12 +7,14 @@ import (
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/simulator"
 	"github.com/vmware/govmomi/simulator/vpx"
+	"github.com/vmware/govmomi/vapi/rest"
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
+	"log"
 	"net/url"
 	"os"
 	"strings"
@@ -91,6 +93,7 @@ func processOverride(u *url.URL, envU, envP string) {
 
 type Client struct {
 	c *vim25.Client
+	r *rest.Client
 	m *view.Manager
 }
 
@@ -135,9 +138,9 @@ func NewClient(u *url.URL, user, pw string) (c Client, err error) {
 		if err != nil {
 			return c, fmt.Errorf("vim client sim %v", err)
 		}
+		//c.r = rest.NewClient(c.c)
 		// run simulator for 10 seconds
 		time.AfterFunc(10*time.Second, s.Close)
-
 	} else {
 
 		soapClient := soap.NewClient(u, true)
@@ -145,11 +148,31 @@ func NewClient(u *url.URL, user, pw string) (c Client, err error) {
 		if err != nil {
 			return c, err
 		}
+		c.r = rest.NewClient(c.c)
 
 	}
 	processOverride(u, user, pw)
 	sessionLogin(c.c, u)
+
+	ui := url.UserPassword(user, pw)
+	if c.r != nil {
+
+		err = c.r.Login(context.Background(), ui)
+		if err != nil {
+			fmt.Println("rest login", err)
+		}
+
+		ses, err := c.r.Session(context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if ses == nil {
+			log.Fatal("expected non-nil session")
+		}
+	}
 	sessionCheck(c.c)
+
 	c.m = view.NewManager(c.c)
 
 	return c, err

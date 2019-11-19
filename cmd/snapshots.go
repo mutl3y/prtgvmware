@@ -35,7 +35,6 @@ var snapshotsCmd = &cobra.Command{
 	name=*vm42
 	tag=prod`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("snapshots called")
 		flags := cmd.Flags()
 		u := &url.URL{}
 		urls, err := flags.GetString("url")
@@ -53,7 +52,7 @@ var snapshotsCmd = &cobra.Command{
 
 		u, _ = u.Parse(urls)
 
-		snapAge, err := flags.GetDuration("snapAge")
+		Age, err := flags.GetDuration("Age")
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -67,18 +66,34 @@ var snapshotsCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		filter, err := flags.GetStringToString("propertyFilter")
-
 		f := property.Filter{}
-		for k, v := range filter {
-			f[k] = v
+		name, err := flags.GetString("Name")
+		if err != nil {
+			log.Fatal(err)
 		}
+		moid, err := flags.GetString("Moid")
+		if err != nil {
+			log.Fatal(err)
+		}
+		tags, err := flags.GetStringSlice("Tags")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if name != "" {
+			f["name"] = name
+		} else if moid != "" {
+			f["self"] = moid
+		} else {
+			f["name"] = "*"
+		}
+
 		lim, err := limitStruct(flags)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		err = c.SnapShotsOlderThan(f, &lim, snapAge, js)
+		err = c.SnapShotsOlderThan(f, tags, &lim, Age, js)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -91,8 +106,8 @@ func init() {
 	snapshotsCmd.Flags().BoolP("json", "j", false, "pretty print json version of vmware data")
 	//summaryCmd.Flags().StringP("ptype", "t", "self", "managed object property type. eg self or name")
 	//summaryCmd.Flags().StringP("psearch", "U", "prtgUtil", "managed object property")
-	snapshotsCmd.Flags().DurationP("snapAge", "P", (7*24)*time.Hour, "ignore snapshots younger than")
-	snapshotsCmd.Flags().StringToStringP("propertyFilter", "F", map[string]string{"name": "*1"}, "vmware property filter")
+	snapshotsCmd.Flags().DurationP("Age", "A", (7*24)*time.Hour, "ignore snapshots younger than")
+
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

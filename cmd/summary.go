@@ -30,10 +30,7 @@ import (
 var summaryCmd = &cobra.Command{
 	Use:   "summary",
 	Short: "vm summary for a single machine",
-	Long: `Property filter examples
-	self=vm-25
-	name=*vm42
-	[name=*vm42,tag=prod]
+	Long: `
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		flags := cmd.Flags()
@@ -63,17 +60,27 @@ var summaryCmd = &cobra.Command{
 			fmt.Println(err)
 		}
 
-		filter, err := flags.GetStringToString("propertyFilter")
-
 		c, err := VMware.NewClient(u, user, pww)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		f := property.Filter{}
-		for k, v := range filter {
-			f[k] = v
+		name, err := flags.GetString("Name")
+		if err != nil {
+			log.Fatal(err)
 		}
+		moid, err := flags.GetString("Moid")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if name != "" {
+			f["name"] = name
+		} else if moid != "" {
+			f["self"] = moid
+		}
+
 		lim, err := limitStruct(flags)
 		if err != nil {
 			log.Fatal(err)
@@ -92,7 +99,7 @@ func init() {
 	//summaryCmd.Flags().StringP("ptype", "t", "self", "managed object property type. eg self or name")
 	//summaryCmd.Flags().StringP("psearch", "U", "prtgUtil", "managed object property")
 	summaryCmd.Flags().DurationP("snapAge", "P", (7*24)*time.Hour, "ignore snapshots younger than")
-	summaryCmd.Flags().StringToStringP("propertyFilter", "F", map[string]string{"name": "*1"}, "vmware property filter")
+	//	summaryCmd.Flags().StringToStringP("propertyFilter", "F", map[string]string{"name": "*1"}, "vmware property filter")
 
 	// Here you will define your flags and configuration settings.
 
