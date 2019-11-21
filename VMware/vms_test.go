@@ -186,7 +186,7 @@ func TestSnapShotsOlder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw)
 			if err != nil {
-				t.Errorf("%+v", err)
+				t.Fatalf("%+v", err)
 			}
 			f := property.Filter{tt.args.searchType: "*" + tt.args.searchItem}
 			lim := &LimitsStruct{}

@@ -195,8 +195,6 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *Lim
 			err = pr.Add(stat, "One", co, lim)
 		}
 
-		// if using tags only return stats for hosts that have tag
-
 	}
 
 	err = pr.Print(start, txt)
