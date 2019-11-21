@@ -8,7 +8,6 @@ import (
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/performance"
 	"github.com/vmware/govmomi/property"
-	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
@@ -156,7 +155,7 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 // tag slice of tags to check
 // txt to display results in json
 // timeRange exclude snapshots younger than time.duration, set to 0 for all
-func (c *Client) SnapShotsOlderThan(f property.Filter, tag []string, lim *LimitsStruct, age time.Duration, txt bool) (err error) {
+func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *LimitsStruct, age time.Duration, txt bool) (err error) {
 	start := time.Now()
 	ctx := context.Background()
 	m := view.NewManager(c.c)
@@ -174,9 +173,12 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, tag []string, lim *Limits
 	}
 
 	pr := NewPrtgData("snapshots")
-	manager := tags.NewManager(c.r)
-
-vmLoop:
+	tm := newTagMap()
+	err = c.tagList(tagIds, tm)
+	if err != nil {
+		return err
+	}
+	//vmLoop:
 	for _, v := range vms {
 		now := time.Now()
 		b := now.Add(-age)
@@ -188,28 +190,12 @@ vmLoop:
 			}
 		}
 
-		attached, err := manager.GetAttachedTags(context.Background(), v.Reference())
-		if err != nil {
-			return err
-		}
-
-		if len(tag) != 0 {
-			var found bool
-			for _, t := range attached {
-				found = tagCheck(t.Name, tag)
-			}
-			if !found {
-				continue vmLoop
-			}
-
-			// if using tags only return stats for hosts that have tag
-			stat := fmt.Sprintf("%v_%v", v.Self.Value, v.Name)
-			err = pr.Add(stat, "One", co, lim)
-		} else {
-			// no tags specified, return everything
+		if tm.check(v.Self.Value, tagIds) || len(tagIds) == 0 {
 			stat := fmt.Sprintf("%v_%v", v.Self.Value, v.Name)
 			err = pr.Add(stat, "One", co, lim)
 		}
+
+		// if using tags only return stats for hosts that have tag
 
 	}
 

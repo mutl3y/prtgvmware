@@ -178,7 +178,7 @@ func TestSnapShotsOlder(t *testing.T) {
 		//{"2", &url.URL{}, args{"self", "vm-27", "", "", false}, false},
 		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
 		//{"4", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
-		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows"}, true}, false},
+		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, true}, false},
 		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windowsx"}, false}, false},
 		//{"7", u, args{"tags", "windows", "prtg@heynes.local", ".l3tm31n", true}, false},
 	}

@@ -113,23 +113,30 @@ func (p *PrtgData) Print(start time.Time, txt bool) error {
 		c.Unit = v.Unit
 		if v.ErrMsg != "" {
 			c.LimitErrorMsg = fmt.Sprintf("%v", v.ErrMsg)
+			c.LimitMode = "1"
 		}
 		if v.WarnMsg != "" {
 			c.LimitWarningMsg = fmt.Sprintf("%v", v.WarnMsg)
+			c.LimitMode = "1"
+
 		}
 		if v.MinErr != 0 {
 			c.LimitMinError = fmt.Sprintf("%v", v.MinErr)
+			c.LimitMode = "1"
+
 		}
 		if v.MaxErr != 0 {
-			fmt.Println("triggered")
-			fmt.Printf("%T %v\n", v.MaxErr, v.MaxErr)
 			c.LimitMaxError = fmt.Sprintf("%v", v.MaxErr)
+			c.LimitMode = "1"
 		}
 		if v.MinWarn != 0 {
 			c.LimitMinWarning = fmt.Sprintf("%v", v.MinWarn)
+			c.LimitMode = "1"
+
 		}
 		if v.MaxWarn != 0 {
 			c.LimitMaxWarning = fmt.Sprintf("%v", v.MaxWarn)
+			c.LimitMode = "1"
 		}
 
 	}
