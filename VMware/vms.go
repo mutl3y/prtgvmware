@@ -13,6 +13,7 @@ import (
 	"github.com/vmware/govmomi/vim25/types"
 	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -28,6 +29,15 @@ var (
 	}
 )
 
+func inStringSlice(str string, strSlice []string) bool {
+	for _, v := range strSlice {
+		if strings.Contains(str, v) {
+			return true
+		}
+	}
+	return false
+}
+
 //VmSummary
 // Takes a VMWare property filter such as property.filter{"name":"*vm1"}
 // txt to display results in json
@@ -35,7 +45,9 @@ var (
 func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Duration, txt bool) error {
 	start := time.Now()
 	ctx := context.Background()
-
+	if c.m == nil {
+		return fmt.Errorf("no manager")
+	}
 	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
 	if err != nil {
 		return fmt.Errorf("con view 1 %v", err)
@@ -43,12 +55,9 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 	defer func() { _ = v.Destroy(ctx) }()
 
 	var vms2 []mo.VirtualMachine
-	//err = v.Retrieve(ctx, []string{"name"}, []string{}, &vms2)
 	kind := []string{"VirtualMachine"}
 
-	err = v.RetrieveWithFilter(ctx, kind, []string{"name", "summary", "snapshot"}, &vms2, f)
-
-	printJson()
+	err = v.RetrieveWithFilter(ctx, kind, []string{"name", "summary", "snapshot", "guest"}, &vms2, f)
 	if err != nil {
 		if err.Error() == "object references is empty" {
 			var s string
@@ -65,6 +74,7 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 	}
 
 	if len(vms2) != 1 {
+
 		type vmFailList struct {
 			name, moid string
 		}
@@ -78,7 +88,7 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 	}
 
 	item := vms2[0]
-	//	printJson(item)
+
 	vm, mets, err := c.vmMetricS(f)
 	if err != nil {
 		return err
@@ -94,60 +104,52 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 	pr.moid = vm
 	err = pr.Add(fmt.Sprintf("Snapshots Older Than %v", age), "One", co, lim)
 
-	for _, v := range summaryDefault {
-		st, err := singleStat(mets[v].Value)
-		if err != nil {
-			return err
-		}
-		if st != nil {
-			err = pr.Add(v, mets[v].Unit, st, &LimitsStruct{})
+	for _, v := range item.Guest.Disk {
+		d := v.DiskPath
+		ca := v.Capacity
+		free := v.FreeSpace
+		one := ca / 100
+		perc := free / one
+		_ = pr.Add("disk free "+d, "KB", free/1000, &LimitsStruct{})
+		_ = pr.Add("disk free % "+d, "KB", perc, &LimitsStruct{
+			MinWarn: 20,
+			MinErr:  10,
+			WarnMsg: "Warning Low Space",
+			ErrMsg:  "Critical disk space",
+		})
+	}
 
+	guestLimits := &LimitsStruct{
+		MinErr: 1,
+		ErrMsg: "tools not running",
+	}
+	if item.Guest.ToolsRunningStatus == "guestToolsRunning" {
+		_ = pr.Add("guest tools running", "Custom", true, guestLimits)
+	} else {
+		_ = pr.Add("guest tools running", "Custom", false, guestLimits)
+
+	}
+
+	for k, v := range mets {
+		if inStringSlice(k, summaryDefault) {
+			st, err := singleStat(v.Value)
 			if err != nil {
 				return err
 			}
-		}
-	}
 
-	if debug {
-		for k, v := range mets {
-			if strings.Contains(k, "datastore") {
-				fmt.Println(k, v.Value, v.Unit)
+			if st != nil {
+				err = pr.Add(k, v.Unit, st, &LimitsStruct{})
+
+				if err != nil {
+					return err
+				}
 			}
-
 		}
 	}
 
-	//for _, v := range vms2 {
-	//	//fmt.Printf("name %v\n",v.Summary.Vm)
-	//	//fmt.Printf("managed identity %v\n",v.ManagedEntity)
-	//	////fmt.Printf("guest %v\n",v.Guest)
-	//	//fmt.Printf("cap %v\n",v.Capability)
-	//	//fmt.Printf("conf %v\n",v.Config)
-	//	//fmt.Printf("task %v\n",v.Entity())
-	//	//fmt.Printf("storage %v\n",v.Storage)
-	//	//fmt.Printf("summary %v\n",v.Summary)
-	//	//fmt.Printf("snapshot %v\n",v.Snapshot)
-	//	//fmt.Printf("ref %+v\n",v.Reference())
-	//	//fmt.Printf("everything\n %+v\n",v)
-	//	b := time.Now()
-	//	co, err := snapshotCount(b, v.Snapshot.RootSnapshotList)
-	//	if err != nil {
-	//		return fmt.Errorf("snapcount 1 %v", err)
-	//	}
-	//
-	//	fmt.Printf("%v snapshots found before %v %v  \n", v.ManagedEntity.ExtensibleManagedObject.Self, b.Truncate(time.Second), co)
-	//	err = pr.Add(v.ManagedEntity.ExtensibleManagedObject.Self.Value, "Count",co)
-	//	if err != nil {
-	//		pr.err = err.Error()
-	//		_ = pr.Print(start)
-	//		return err
-	//	}
-	//}
-	//
-	//
-	_ = pr.Print(start, txt)
+	err = pr.Print(time.Since(start), txt)
 
-	return nil
+	return err
 }
 
 //SnapShotsOlderThan
@@ -164,41 +166,52 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *Lim
 	if err != nil {
 		return
 	}
-
 	defer func() { _ = v.Destroy(ctx) }()
+
+	// retrieve snapshot info
 	var vms []mo.VirtualMachine
 	err = v.RetrieveWithFilter(ctx, []string{"VirtualMachine"}, []string{"snapshot", "name"}, &vms, f)
 	if err != nil {
 		return
 	}
 
+	// retrieve tags and object associations
 	pr := NewPrtgData("snapshots")
 	tm := newTagMap()
 	err = c.tagList(tagIds, tm)
-	if err != nil {
-		return err
+	if (err != nil) && !strings.Contains(err.Error(), "404") {
+		return
 	}
-	//vmLoop:
+
+	respTime := time.Since(start)
+
+	b := time.Now().Add(-age)
+	wg := sync.WaitGroup{}
+	noTags := len(tagIds) == 0
+
 	for _, v := range vms {
-		now := time.Now()
-		b := now.Add(-age)
-		var co int
-		if v.Snapshot != nil {
-			co, err = snapshotCount(b, v.Snapshot.RootSnapshotList)
-			if err != nil {
-				return
+		wg.Add(1)
+		go func(v mo.VirtualMachine) {
+			defer wg.Done()
+			var co int
+			if v.Snapshot != nil {
+				co, err = snapshotCount(b, v.Snapshot.RootSnapshotList)
+				if err == nil {
+					return
+				}
 			}
-		}
 
-		if tm.check(v.Self.Value, tagIds) || len(tagIds) == 0 {
-			stat := fmt.Sprintf("%v_%v", v.Self.Value, v.Name)
-			err = pr.Add(stat, "One", co, lim)
-		}
+			if noTags || tm.check(v.Self.Value, tagIds) {
+				stat := fmt.Sprintf("%v_%v", v.Self.Value, v.Name)
+				err = pr.Add(stat, "One", co, lim)
+			}
+		}(v)
 
 	}
 
-	err = pr.Print(start, txt)
-	return
+	wg.Wait()
+	err = pr.Print(respTime, txt)
+	return err
 
 }
 
@@ -237,8 +250,8 @@ func (c *Client) vmMetricS(filter property.Filter) (vm string, m map[string]Prtg
 	// Create PerfQuerySpec
 	spec := types.PerfQuerySpec{
 		MaxSample:  1,
-		MetricId:   []types.PerfMetricId{}, //{Instance: "*"}
-		IntervalId: 300,
+		MetricId:   []types.PerfMetricId{{Instance: "*"}},
+		IntervalId: 20,
 	}
 
 	// Query metrics
@@ -258,33 +271,38 @@ func (c *Client) vmMetricS(filter property.Filter) (vm string, m map[string]Prtg
 
 	//Read result
 	for _, metric := range result {
-		//fmt.Printf("%+v\n",metric)
 		for _, v := range metric.Value {
-			vm = metric.Entity.String()
-			counter := counters[v.Name]
+			n := v.Name
+
+			vm = metric.Entity.Value
+			counter := counters[n]
 			units := counter.UnitInfo.GetElementDescription().Label
 
-			if len(v.Instance) != 0 {
+			instance := v.Instance
+			if instance == "*" {
+				instance = ""
+			}
+			if instance != "" {
+				n = fmt.Sprintf("%v.%v", n, instance)
+			}
 
-				if debug {
-					if len(v.Value) != 0 {
-						fmt.Printf("%+v\n", v)
-						//fmt.Printf("%T %v\n", v.Value, v.Value) // todo
-					}
-				}
-
+			if len(v.Value) != 0 {
 				st, err := singleStat(v.ValueCSV())
 				if err != nil {
 					return "", nil, fmt.Errorf("singlestat failed %v", err)
 				}
-				m[v.Name] = Prtgitem{
+
+				if st == "-1" {
+					continue
+				}
+
+				m[n] = Prtgitem{
 					Value: st,
 					Unit:  VmMetType(units),
 				}
 			}
 		}
 	}
-
 	return
 }
 
@@ -511,13 +529,18 @@ func singleStat(stat interface{}) (interface{}, error) {
 	return rtnStat, nil
 }
 
-func printJson(i ...interface{}) {
+func printJson(txt bool, i ...interface{}) {
 	for _, v := range i {
 		b, err := json.MarshalIndent(v, "", "    ")
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%+v\n", string(b))
+		if txt {
+			fmt.Println(i...)
+		} else {
+
+			fmt.Printf("%+v\n", string(b))
+		}
 	}
 }
 

@@ -93,8 +93,7 @@ func (p *PrtgData) Get(name string) interface{} {
 	return p.items[name]
 }
 
-func (p *PrtgData) Print(start time.Time, txt bool) error {
-	checkTime := time.Since(start)
+func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
 
 	s := prtg.New()
 	if p.err != "" {
@@ -108,7 +107,6 @@ func (p *PrtgData) Print(start time.Time, txt bool) error {
 		return fmt.Errorf("error state %v", p.err)
 	}
 	for k, v := range p.items {
-
 		c := s.AddChannel(k).SetValue(v.Value)
 		c.Unit = v.Unit
 		if v.ErrMsg != "" {
@@ -158,7 +156,7 @@ func (p *PrtgData) Print(start time.Time, txt bool) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(p.name)
+	//	fmt.Println(p.name)
 	fmt.Printf("%+v\n", string(b))
 
 	return nil

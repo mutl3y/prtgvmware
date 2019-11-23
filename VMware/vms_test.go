@@ -26,13 +26,13 @@ func TestClient_vmSummary(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		//{"1", &url.URL{}, args{"name", "1", "", "", false}, false},
-		//{"2", &url.URL{}, args{"self", "vm-27", "", "", false}, false},
-		////{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
+		{"1", &url.URL{}, args{"name", "*1", "", "", false}, false},
+		{"2", &url.URL{}, args{"self", "*vm-30", "", "", false}, false},
+		{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
 		//{"4", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
 		//{"5", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
-		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", true}, false},
-		{"5", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
+		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
+		{"5", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", false}, false},
 		//{"6", u, args{"tags", "windows", "prtg@heynes.local", ".l3tm31n", true}, false},
 	}
 	//	debug = true
@@ -157,6 +157,107 @@ func Test_snapshotCount(t *testing.T) {
 	}
 }
 
+func Benchmark_snapshotCount(b *testing.B) {
+	type args struct {
+		snp []types.VirtualMachineSnapshotTree
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    int
+		wantErr bool
+	}{{
+		name: "",
+		args: args{snp: []types.VirtualMachineSnapshotTree{
+			{
+				Snapshot: types.ManagedObjectReference{
+					Type:  "VirtualMachineSnapshot",
+					Value: "parent",
+				},
+				Vm: types.ManagedObjectReference{
+					Type:  "VirtualMachine",
+					Value: "vm-26",
+				},
+				Name:           "test1",
+				Description:    "test-snaphot",
+				Id:             1,
+				CreateTime:     time.Now().Truncate(time.Microsecond),
+				State:          "poweredOn",
+				Quiesced:       true,
+				BackupManifest: "",
+				ChildSnapshotList: []types.VirtualMachineSnapshotTree{
+					{
+						Snapshot: types.ManagedObjectReference{
+							Type:  "VirtualMachineSnapshot",
+							Value: "child 0",
+						},
+						Vm: types.ManagedObjectReference{
+							Type:  "VirtualMachine",
+							Value: "vm-26",
+						},
+						Name:              "test2",
+						Description:       "test-sub-hot",
+						Id:                2,
+						CreateTime:        time.Now().Truncate(time.Microsecond),
+						State:             "poweredOn",
+						Quiesced:          true,
+						BackupManifest:    "",
+						ChildSnapshotList: nil,
+						ReplaySupported:   nil,
+					}, {
+						Snapshot: types.ManagedObjectReference{
+							Type:  "VirtualMachineSnapshot",
+							Value: "child 1",
+						},
+						Vm: types.ManagedObjectReference{
+							Type:  "VirtualMachine",
+							Value: "vm-26",
+						},
+						Name:           "test3",
+						Description:    "test-sub-hot",
+						Id:             3,
+						CreateTime:     time.Now().Truncate(time.Microsecond),
+						State:          "poweredOn",
+						Quiesced:       true,
+						BackupManifest: "",
+						ChildSnapshotList: []types.VirtualMachineSnapshotTree{
+							{
+								Snapshot: types.ManagedObjectReference{
+									Type:  "VirtualMachineSnapshot",
+									Value: "child 1 child",
+								},
+								Vm: types.ManagedObjectReference{
+									Type:  "VirtualMachine",
+									Value: "vm-26",
+								},
+								Name:              "test4",
+								Description:       "test-sub-hot",
+								Id:                4,
+								CreateTime:        time.Now().Truncate(time.Microsecond),
+								State:             "poweredOn",
+								Quiesced:          true,
+								BackupManifest:    "",
+								ChildSnapshotList: nil,
+								ReplaySupported:   nil,
+							}},
+						ReplaySupported: nil,
+					}},
+				ReplaySupported: nil,
+			}}},
+		want:    4,
+		wantErr: false,
+	},
+	}
+	for _, tt := range tests {
+		for n := 0; n < b.N; n++ {
+			_, err := snapshotCount(time.Now(), tt.args.snp)
+			if err != nil {
+				b.Fatalf("failed %v", err)
+			}
+		}
+	}
+}
+
 func TestSnapShotsOlder(t *testing.T) {
 	type args struct {
 		searchType, searchItem string
@@ -179,7 +280,7 @@ func TestSnapShotsOlder(t *testing.T) {
 		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
 		//{"4", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
 		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, true}, false},
-		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windowsx"}, false}, false},
+		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windowsx"}, false}, true},
 		//{"7", u, args{"tags", "windows", "prtg@heynes.local", ".l3tm31n", true}, false},
 	}
 	for _, tt := range tests {
@@ -192,7 +293,7 @@ func TestSnapShotsOlder(t *testing.T) {
 			lim := &LimitsStruct{}
 
 			err = c.SnapShotsOlderThan(f, tt.args.tag, lim, time.Second, true)
-			if err != nil {
+			if (err != nil) && !tt.wantErr {
 				t.Errorf("failed %v", err)
 			}
 
@@ -232,7 +333,7 @@ func TestPrtgData_JSON(t *testing.T) {
 				err:   tt.fields.err,
 				items: tt.fields.items,
 			}
-			if err := p.Print(time.Now(), true); (err != nil) != tt.wantErr {
+			if err := p.Print(0, true); (err != nil) != tt.wantErr {
 				t.Errorf("XML() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -245,15 +346,19 @@ func TestClient_MetricSeries(t *testing.T) {
 		prop    property.Filter
 		wantErr bool
 	}{
-		{"", property.Filter{"name": "*1"}, false},
+		{"", property.Filter{"name": "ad"}, false},
 		//{"", property.Filter{"self": "*"}, true},
 		//{"", property.Filter{"self": "*"}, true},
 		//{"", property.Filter{"name": "*2"}, true},
 		//{"", nil, true},
 	}
+	u, err := url.Parse("https://192.168.59.4/sdk")
+	if err != nil {
+		t.Fatalf("failed to parse url")
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(&url.URL{}, "", "")
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
 			if err != nil {
 				t.Errorf("failed %v", err)
 			}

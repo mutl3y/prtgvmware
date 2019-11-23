@@ -6,11 +6,6 @@ import (
 	"sync"
 )
 
-type tagStruct struct {
-	name   string
-	objIds []string
-}
-
 type tagMap struct {
 	data map[string][]string
 	mu   *sync.RWMutex
@@ -31,9 +26,9 @@ func (t *tagMap) add(vm, tag string) {
 
 func (t *tagMap) check(vm string, tag []string) bool {
 	t.mu.RLock()
-	tags := t.data[vm]
+	td := t.data[vm]
 	t.mu.RUnlock()
-	for _, v := range tags {
+	for _, v := range td {
 		for _, v2 := range tag {
 			if v2 == v {
 				return true
@@ -44,25 +39,23 @@ func (t *tagMap) check(vm string, tag []string) bool {
 	return false
 }
 
-func (c *Client) tagList(tagIds []string, tm *tagMap) error {
+func (c *Client) tagList(tagIds []string, tm *tagMap) (err error) {
 
 	for _, tag := range tagIds {
-		c.getObjIds(tag, tm)
+		err = c.getObjIds(tag, tm)
 	}
 
-	return nil
+	return
 }
 
-func (c *Client) getObjIds(tag string, tm *tagMap) {
+func (c *Client) getObjIds(tag string, tm *tagMap) (err error) {
 	ctx := context.Background()
 	manager := tags.NewManager(c.r)
-
 	vms, err := manager.GetAttachedObjectsOnTags(ctx, []string{tag})
-	if err != nil {
-		return
+	if err == nil {
+		for _, vm := range vms[0].ObjectIDs {
+			tm.add(vm.Reference().Value, tag)
+		}
 	}
-
-	for _, vm := range vms[0].ObjectIDs {
-		tm.add(vm.Reference().Value, tag)
-	}
+	return
 }
