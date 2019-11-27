@@ -6,27 +6,27 @@ import (
 	"sync"
 )
 
-type tagMap struct {
-	data map[string][]string
+type TagMap struct {
+	Data map[string][]string
 	mu   *sync.RWMutex
 }
 
-func newTagMap() *tagMap {
-	rtn := tagMap{}
-	rtn.data = make(map[string][]string, 0)
+func NewTagMap() *TagMap {
+	rtn := TagMap{}
+	rtn.Data = make(map[string][]string, 0)
 	rtn.mu = &sync.RWMutex{}
 	return &rtn
 }
 
-func (t *tagMap) add(vm, tag string) {
+func (t *TagMap) add(vm, tag string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.data[vm] = append(t.data[vm], tag)
+	t.Data[vm] = append(t.Data[vm], tag)
 }
 
-func (t *tagMap) check(vm string, tag []string) bool {
+func (t *TagMap) check(vm string, tag []string) bool {
 	t.mu.RLock()
-	td := t.data[vm]
+	td := t.Data[vm]
 	t.mu.RUnlock()
 	for _, v := range td {
 		for _, v2 := range tag {
@@ -39,18 +39,19 @@ func (t *tagMap) check(vm string, tag []string) bool {
 	return false
 }
 
-func (c *Client) tagList(tagIds []string, tm *tagMap) (err error) {
+func (c *Client) tagList(tagIds []string, tm *TagMap) (err error) {
 
 	for _, tag := range tagIds {
-		err = c.getObjIds(tag, tm)
+		err = c.GetObjIds(tag, tm)
 	}
 
 	return
 }
 
-func (c *Client) getObjIds(tag string, tm *tagMap) (err error) {
+func (c *Client) GetObjIds(tag string, tm *TagMap) (err error) {
 	ctx := context.Background()
 	manager := tags.NewManager(c.r)
+
 	vms, err := manager.GetAttachedObjectsOnTags(ctx, []string{tag})
 	if err == nil {
 		for _, vm := range vms[0].ObjectIDs {

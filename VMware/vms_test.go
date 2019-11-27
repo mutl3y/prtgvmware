@@ -1,7 +1,7 @@
 package VMware
 
 import (
-	"github.com/PRTG/go-prtg-sensor-api"
+	prtgSensor "github.com/PRTG/go-prtg-sensor-api"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/types"
 	"net/url"
@@ -29,11 +29,11 @@ func TestClient_vmSummary(t *testing.T) {
 		{"1", &url.URL{}, args{"name", "*1", "", "", false}, false},
 		{"2", &url.URL{}, args{"self", "*vm-30", "", "", false}, false},
 		{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
-		//{"4", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
-		//{"5", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
-		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"5", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", false}, false},
-		//{"6", u, args{"tags", "windows", "prtg@heynes.local", ".l3tm31n", true}, false},
+		//{"4", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
+		//{"5", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
+		{"6", u, args{"name", "ad", "prtgSensor@heynes.local", ".l3tm31n", false}, false},
+		{"5", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", false}, false},
+		//{"6", u, args{"tags", "windows", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
 	}
 	//	debug = true
 	for _, tt := range tests {
@@ -278,10 +278,10 @@ func TestSnapShotsOlder(t *testing.T) {
 		//{"1", &url.URL{}, args{"name", "1", "", "", false}, false},
 		//{"2", &url.URL{}, args{"self", "vm-27", "", "", false}, false},
 		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
-		//{"4", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", true}, false},
-		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, true}, false},
-		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windowsx"}, false}, true},
-		//{"7", u, args{"tags", "windows", "prtg@heynes.local", ".l3tm31n", true}, false},
+		//{"4", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
+		{"5", u, args{"name", "ad", "prtgSensor@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, true}, false},
+		{"6", u, args{"name", "ad", "prtgSensor@heynes.local", ".l3tm31n", []string{"windowsx"}, false}, true},
+		//{"7", u, args{"tags", "windows", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -318,10 +318,10 @@ func TestPrtgData_JSON(t *testing.T) {
 				err: "",
 				items: map[string]Prtgitem{"int": {
 					Value: 1,
-					Unit:  string(prtg.Count),
+					Unit:  string(prtgSensor.Count),
 				}, "float": {
 					Value: 443.212,
-					Unit:  string(prtg.MegaBit),
+					Unit:  string(prtgSensor.MegaBit),
 				}},
 			},
 			wantErr: false,
@@ -358,7 +358,7 @@ func TestClient_MetricSeries(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
+			c, err := NewClient(u, "prtgSensor@heynes.local", ".l3tm31n")
 			if err != nil {
 				t.Errorf("failed %v", err)
 			}

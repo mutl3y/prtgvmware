@@ -3,7 +3,8 @@ package VMware
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/PRTG/go-prtg-sensor-api"
+	prtgSensor "github.com/PRTG/go-prtg-sensor-api"
+	"sort"
 	"sync"
 	"time"
 )
@@ -95,7 +96,7 @@ func (p *PrtgData) Get(name string) interface{} {
 
 func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
 
-	s := prtg.New()
+	s := prtgSensor.New()
 	if p.err != "" {
 		s.SetError(true)
 		s.SetSensorText(p.err)
@@ -106,41 +107,54 @@ func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
 		fmt.Println(js)
 		return fmt.Errorf("error state %v", p.err)
 	}
-	for k, v := range p.items {
-		c := s.AddChannel(k).SetValue(v.Value)
-		c.Unit = v.Unit
-		if v.ErrMsg != "" {
-			c.LimitErrorMsg = fmt.Sprintf("%v", v.ErrMsg)
+	keys := make([]string, 0, len(p.items))
+	for k := range p.items {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		item := p.items[k]
+		c := s.AddChannel(k).SetValue(item.Value)
+		c.Unit = item.Unit
+		if item.ErrMsg != "" {
+			c.LimitErrorMsg = fmt.Sprintf("%v", item.ErrMsg)
 			c.LimitMode = "1"
 		}
-		if v.WarnMsg != "" {
-			c.LimitWarningMsg = fmt.Sprintf("%v", v.WarnMsg)
+		if item.WarnMsg != "" {
+			c.LimitWarningMsg = fmt.Sprintf("%v", item.WarnMsg)
 			c.LimitMode = "1"
 
 		}
-		if v.MinErr != 0 {
-			c.LimitMinError = fmt.Sprintf("%v", v.MinErr)
+		if item.MinErr != 0 {
+			c.LimitMinError = fmt.Sprintf("%v", item.MinErr)
 			c.LimitMode = "1"
 
 		}
-		if v.MaxErr != 0 {
-			c.LimitMaxError = fmt.Sprintf("%v", v.MaxErr)
+		if item.MaxErr != 0 {
+			c.LimitMaxError = fmt.Sprintf("%v", item.MaxErr)
 			c.LimitMode = "1"
 		}
-		if v.MinWarn != 0 {
-			c.LimitMinWarning = fmt.Sprintf("%v", v.MinWarn)
+		if item.MinWarn != 0 {
+			c.LimitMinWarning = fmt.Sprintf("%v", item.MinWarn)
 			c.LimitMode = "1"
 
 		}
-		if v.MaxWarn != 0 {
-			c.LimitMaxWarning = fmt.Sprintf("%v", v.MaxWarn)
+		if item.MaxWarn != 0 {
+			c.LimitMaxWarning = fmt.Sprintf("%v", item.MaxWarn)
 			c.LimitMode = "1"
+		}
+		if inStringSlice(c.Unit, []string{"Byte"}) {
+			c.VolumeSize = "1"
+		}
+		if inStringSlice(c.Unit, []string{"Bit"}) {
+			c.SpeedSize = "1"
 		}
 
 	}
 
 	// Response time channel
-	s.AddChannel("Execution time").SetValue(checkTime.Seconds() * 1000).SetUnit(prtg.TimeResponse)
+	s.AddChannel("Execution time").SetValue(checkTime.Seconds() * 1000).SetUnit(prtgSensor.TimeResponse)
 
 	if !txt {
 		js, err := s.MarshalToString()

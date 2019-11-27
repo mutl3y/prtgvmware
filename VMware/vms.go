@@ -12,6 +12,8 @@ import (
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 	"log"
+	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -31,7 +33,7 @@ var (
 
 func inStringSlice(str string, strSlice []string) bool {
 	for _, v := range strSlice {
-		if strings.Contains(str, v) {
+		if str == v {
 			return true
 		}
 	}
@@ -110,8 +112,8 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 		free := v.FreeSpace
 		one := ca / 100
 		perc := free / one
-		_ = pr.Add("disk free "+d, "KB", free/1000, &LimitsStruct{})
-		_ = pr.Add("disk free % "+d, "KB", perc, &LimitsStruct{
+		_ = pr.Add("disk free "+d, "KiloByte", free/1000, &LimitsStruct{})
+		_ = pr.Add("disk free % "+d, "Percent", perc, &LimitsStruct{
 			MinWarn: 20,
 			MinErr:  10,
 			WarnMsg: "Warning Low Space",
@@ -120,7 +122,7 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 	}
 
 	guestLimits := &LimitsStruct{
-		MinErr: 1,
+		MinErr: 0.5,
 		ErrMsg: "tools not running",
 	}
 	if item.Guest.ToolsRunningStatus == "guestToolsRunning" {
@@ -177,7 +179,7 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *Lim
 
 	// retrieve tags and object associations
 	pr := NewPrtgData("snapshots")
-	tm := newTagMap()
+	tm := NewTagMap()
 	err = c.tagList(tagIds, tm)
 	if (err != nil) && !strings.Contains(err.Error(), "404") {
 		return
@@ -287,11 +289,11 @@ func (c *Client) vmMetricS(filter property.Filter) (vm string, m map[string]Prtg
 			}
 
 			if len(v.Value) != 0 {
+
 				st, err := singleStat(v.ValueCSV())
 				if err != nil {
 					return "", nil, fmt.Errorf("singlestat failed %v", err)
 				}
-
 				if st == "-1" {
 					continue
 				}
@@ -469,7 +471,6 @@ func VmMetType(k string) string {
 	prtgmap["ms"] = TimeResponse
 	prtgmap["%"] = Percent
 	prtgmap["KBps"] = KiloBit
-	prtgmap["KB"] = KiloByte
 	prtgmap["MHz"] = CPU
 	prtgmap["℃"] = Temperature
 	prtgmap["µs"] = Custom
@@ -479,7 +480,7 @@ func VmMetType(k string) string {
 
 	t := prtgmap[k]
 	if t == "" {
-
+		fmt.Printf("not reconized %v\n", k)
 		return k
 	}
 	return t
@@ -509,11 +510,23 @@ func snapshotCount(before time.Time, snp []types.VirtualMachineSnapshotTree) (in
 func singleStat(stat interface{}) (interface{}, error) {
 	var rtnStat interface{}
 	switch t := stat.(type) {
-	case float32, float64, int8, uint8, int16, uint16, int32, uint32, uint64, int64, uint, int, string, bool:
+	case float32, float64, int8, uint8, int16, uint16, int32, uint32, uint64, int64, uint, int, bool:
 		if stat == "" {
 			return nil, nil
 		}
+
 		rtnStat = stat
+	case string:
+		if stat == "" {
+			return nil, nil
+		}
+		fl, err := strconv.ParseFloat(stat.(string), 64)
+		if err != nil {
+			fmt.Println("cant parse this ************************************************************")
+			return nil, err
+		}
+		fl = math.RoundToEven(fl*1000) / 1000
+		rtnStat = fl
 	case []float64:
 		st := stat.([]float64)
 		rtnStat = st[0]
