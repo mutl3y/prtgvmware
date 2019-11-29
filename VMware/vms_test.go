@@ -31,8 +31,8 @@ func TestClient_vmSummary(t *testing.T) {
 		{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
 		//{"4", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
 		//{"5", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
-		{"6", u, args{"name", "ad", "prtgSensor@heynes.local", ".l3tm31n", false}, false},
-		{"5", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", false}, false},
+		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
+		{"5", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", false}, false},
 		//{"6", u, args{"tags", "windows", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
 	}
 	//	debug = true
@@ -45,6 +45,50 @@ func TestClient_vmSummary(t *testing.T) {
 			f := property.Filter{tt.args.searchType: tt.args.searchItem}
 			lim := &LimitsStruct{}
 			err = c.VmSummary(f, lim, time.Hour, tt.args.txt)
+			if (err != nil) && !tt.wantErr {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestClient_vmSummary2(t *testing.T) {
+	type args struct {
+		searchName, searchMoid string
+		usr, pw                string
+		txt                    bool
+	}
+	u, err := url.Parse("https://192.168.59.4/sdk")
+	if err != nil {
+		t.Fatalf("failed to parse url")
+	}
+
+	tests := []struct {
+		name    string
+		ur      *url.URL
+		args    args
+		wantErr bool
+	}{
+		//{"1", &url.URL{}, args{"name", "*1", "", "", false}, false},
+		//{"2", &url.URL{}, args{"self", "*vm-30", "", "", false}, false},
+		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
+		////{"4", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
+		////{"5", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
+		//{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
+		{"6", u, args{"", "vm-13", "prtg@heynes.local", ".l3tm31n", false}, false},
+		{"5", u, args{"vcenter", "", "prtg@heynes.local", ".l3tm31n", false}, false},
+
+		//{"6", u, args{"tags", "windows", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
+	}
+	//	debug = true
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw)
+			if err != nil {
+				t.Errorf("%+v", err)
+			}
+			lim := &LimitsStruct{}
+			err = c.VmSummary2(tt.args.searchName, tt.args.searchMoid, lim, time.Hour, tt.args.txt)
 			if (err != nil) && !tt.wantErr {
 				t.Fatal(err)
 			}
@@ -279,8 +323,8 @@ func TestSnapShotsOlder(t *testing.T) {
 		//{"2", &url.URL{}, args{"self", "vm-27", "", "", false}, false},
 		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
 		//{"4", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
-		{"5", u, args{"name", "ad", "prtgSensor@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, true}, false},
-		{"6", u, args{"name", "ad", "prtgSensor@heynes.local", ".l3tm31n", []string{"windowsx"}, false}, true},
+		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, true}, false},
+		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windowsx"}, false}, true},
 		//{"7", u, args{"tags", "windows", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
 	}
 	for _, tt := range tests {
@@ -363,7 +407,10 @@ func TestClient_MetricSeries(t *testing.T) {
 				t.Errorf("failed %v", err)
 			}
 
-			h, res, err := c.vmMetricS(tt.prop)
+			h, res, err := c.vmMetricS(types.ManagedObjectReference{
+				Type:  "VirtualMachine",
+				Value: "vm-13",
+			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 			}

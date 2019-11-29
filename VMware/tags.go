@@ -3,30 +3,46 @@ package VMware
 import (
 	"context"
 	"github.com/vmware/govmomi/vapi/tags"
+	"github.com/vmware/govmomi/vim25/mo"
 	"sync"
 )
 
+type obJdata struct {
+	Tags    []string
+	Name    string
+	RefType string
+}
+
 type TagMap struct {
-	Data map[string][]string
+	Data map[string]obJdata
 	mu   *sync.RWMutex
 }
 
 func NewTagMap() *TagMap {
 	rtn := TagMap{}
-	rtn.Data = make(map[string][]string, 0)
+	rtn.Data = make(map[string]obJdata, 0)
 	rtn.mu = &sync.RWMutex{}
 	return &rtn
 }
 
-func (t *TagMap) add(vm, tag string) {
+func (t *TagMap) add(mo mo.Reference, tag string) {
+	id := mo.Reference().Value
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	t.Data[vm] = append(t.Data[vm], tag)
+
+	obj, ok := t.Data[id]
+	if !ok {
+		obj := obJdata{}
+		obj.Tags = make([]string, 0, 10)
+	}
+	obj.RefType = mo.Reference().Type
+	obj.Tags = append(obj.Tags, tag)
+	t.Data[id] = obj
 }
 
 func (t *TagMap) check(vm string, tag []string) bool {
 	t.mu.RLock()
-	td := t.Data[vm]
+	td := t.Data[vm].Tags
 	t.mu.RUnlock()
 	for _, v := range td {
 		for _, v2 := range tag {
@@ -39,7 +55,7 @@ func (t *TagMap) check(vm string, tag []string) bool {
 	return false
 }
 
-func (c *Client) tagList(tagIds []string, tm *TagMap) (err error) {
+func (c *Client) list(tagIds []string, tm *TagMap) (err error) {
 
 	for _, tag := range tagIds {
 		err = c.GetObjIds(tag, tm)
@@ -52,10 +68,10 @@ func (c *Client) GetObjIds(tag string, tm *TagMap) (err error) {
 	ctx := context.Background()
 	manager := tags.NewManager(c.r)
 
-	vms, err := manager.GetAttachedObjectsOnTags(ctx, []string{tag})
+	objs, err := manager.GetAttachedObjectsOnTags(ctx, []string{tag})
 	if err == nil {
-		for _, vm := range vms[0].ObjectIDs {
-			tm.add(vm.Reference().Value, tag)
+		for _, obj := range objs[0].ObjectIDs {
+			tm.add(obj.Reference(), tag)
 		}
 	}
 	return

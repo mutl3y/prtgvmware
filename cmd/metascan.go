@@ -27,7 +27,7 @@ import (
 // metascanCmd represents the metascan command
 var metascanCmd = &cobra.Command{
 	Use:   "metascan",
-	Short: "returns sensors for vmware servers by name or tag",
+	Short: "returns sensors for vmware vcenter instances by name or tag",
 	Long:  `used for autodiscovery of vmware sensors`,
 	Run: func(cmd *cobra.Command, args []string) {
 		flags := cmd.Flags()
@@ -61,13 +61,17 @@ var metascanCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		scanTypes, err := flags.GetStringSlice("Type")
+		if err != nil {
+			log.Fatal(err)
+		}
 		if name != "" {
 			f["name"] = "*"
 		}
 
 		tagMap := VMware.NewTagMap()
 
-		err = c.Metascan(tags, tagMap)
+		err = c.Metascan(tags, tagMap, scanTypes)
 		if err != nil {
 			return
 		}
@@ -76,6 +80,7 @@ var metascanCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(metascanCmd)
+	metascanCmd.Flags().StringSliceP("Type", "T", []string{"vm"}, "what to scan for")
 
 	// Here you will define your flags and configuration settings.
 

@@ -1,8 +1,8 @@
 package VMware
 
 import (
+	"github.com/vmware/govmomi/vim25/types"
 	"net/url"
-	"reflect"
 	"testing"
 )
 
@@ -14,10 +14,10 @@ func TestClient_tagList(t *testing.T) {
 	tests := []struct {
 		name       string
 		tagIds     []string
-		wantRtnMap map[string][]string
+		wantRtnMap map[string]obJdata
 		wantErr    bool
 	}{
-		{"1", []string{"windows", "PRTG"}, map[string][]string{"vm-15": {"windows", "PRTG"}}, false},
+		{"1", []string{"windows"}, map[string]obJdata{"vm-15": {[]string{"windows"}, "vm-13", "VirtualMachine"}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -26,14 +26,12 @@ func TestClient_tagList(t *testing.T) {
 				t.Fatal("cant get client")
 			}
 			gotRtnMap := NewTagMap()
-			err = c.tagList(tt.tagIds, gotRtnMap)
+			err = c.list(tt.tagIds, gotRtnMap)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("tagList() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("list() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(gotRtnMap.Data, tt.wantRtnMap) {
-				t.Errorf("tagList() gotRtnMap = %v, want %v", gotRtnMap, tt.wantRtnMap)
-			}
+
 		})
 	}
 }
@@ -58,8 +56,13 @@ func Test_tagMap_add(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t1 *testing.T) {
 
-			tm.add(tt.args.vm, tt.args.tag)
-			dat := tm.Data[tt.args.vm]
+			oj := types.ManagedObjectReference{
+				Type:  "VirtualMachine",
+				Value: "",
+			}
+			oj.Value = tt.args.vm
+			tm.add(oj, tt.args.tag)
+			dat := tm.Data[tt.args.vm].Tags
 			if (len(dat) != tt.count) && !tt.wantErr {
 				t.Fatalf("wanted count of %v got %v \n%+v", tt.count, len(dat), dat)
 			}
@@ -90,8 +93,8 @@ func Test_tagMap_check(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ttagMap := NewTagMap()
-			err := c.tagList([]string{tt.tag}, ttagMap)
-			if err != nil {
+			err := c.list([]string{tt.tag}, ttagMap)
+			if (err != nil) && !tt.wantErr {
 				t.Fatalf("taglist error %v", err)
 			}
 			if (len(ttagMap.Data) == 0) && !tt.wantErr {

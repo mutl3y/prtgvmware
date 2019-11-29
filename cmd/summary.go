@@ -17,7 +17,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/vmware/govmomi/property"
 	"log"
 	"net/url"
 	"time"
@@ -65,7 +64,6 @@ var summaryCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		f := property.Filter{}
 		name, err := flags.GetString("Name")
 		if err != nil {
 			log.Fatal(err)
@@ -75,17 +73,11 @@ var summaryCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		if name != "" {
-			f["name"] = name
-		} else if moid != "" {
-			f["self"] = moid
-		}
-
 		lim, err := limitStruct(flags)
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = c.VmSummary(f, &lim, snapAge, js)
+		err = c.VmSummary2(name, moid, &lim, snapAge, js)
 		if err != nil {
 			fmt.Println(err)
 		}

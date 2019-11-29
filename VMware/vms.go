@@ -91,7 +91,120 @@ func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Durati
 
 	item := vms2[0]
 
-	vm, mets, err := c.vmMetricS(f)
+	vm, mets, err := c.vmMetricS(item.Reference())
+	if err != nil {
+		return err
+	}
+	var co int
+	if item.Snapshot != nil {
+		co, err = snapshotCount(time.Now().Add(-age), item.Snapshot.RootSnapshotList)
+		if err != nil {
+			return err
+		}
+	}
+	pr := NewPrtgData(item.Name)
+	pr.moid = vm
+	err = pr.Add(fmt.Sprintf("Snapshots Older Than %v", age), "One", co, lim)
+
+	for _, v := range item.Guest.Disk {
+		d := v.DiskPath
+		ca := v.Capacity
+		free := v.FreeSpace
+		one := ca / 100
+		perc := free / one
+		_ = pr.Add("disk free "+d, "KiloByte", free/1000, &LimitsStruct{})
+		_ = pr.Add("disk free % "+d, "Percent", perc, &LimitsStruct{
+			MinWarn: 20,
+			MinErr:  10,
+			WarnMsg: "Warning Low Space",
+			ErrMsg:  "Critical disk space",
+		})
+	}
+
+	guestLimits := &LimitsStruct{
+		MinErr: 0.5,
+		ErrMsg: "tools not running",
+	}
+	if item.Guest.ToolsRunningStatus == "guestToolsRunning" {
+		_ = pr.Add("guest tools running", "Custom", true, guestLimits)
+	} else {
+		_ = pr.Add("guest tools running", "Custom", false, guestLimits)
+
+	}
+
+	for k, v := range mets {
+		if inStringSlice(k, summaryDefault) {
+			st, err := singleStat(v.Value)
+			if err != nil {
+				return err
+			}
+
+			if st != nil {
+				err = pr.Add(k, v.Unit, st, &LimitsStruct{})
+
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	err = pr.Print(time.Since(start), txt)
+
+	return err
+}
+
+func (c *Client) VmSummary2(name, moid string, lim *LimitsStruct, age time.Duration, txt bool) error {
+	start := time.Now()
+	ctx := context.Background()
+	if c.m == nil {
+		return fmt.Errorf("no manager")
+	}
+	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
+	if err != nil {
+		return fmt.Errorf("con view 1 %v", err)
+	}
+	defer func() { _ = v.Destroy(ctx) }()
+
+	//var vms2 []mo.VirtualMachine
+	//	kind := []string{"VirtualMachine"}
+	vms := make([]mo.VirtualMachine, 0, 100)
+	if moid != "" {
+		v0 := mo.VirtualMachine{}
+		err = v.Properties(ctx, types.ManagedObjectReference{
+			Type:  "VirtualMachine",
+			Value: "vm-13",
+		}, []string{"name", "summary", "snapshot", "guest"}, &v0)
+		if err != nil {
+			return err
+		}
+		vms = append(vms, v0)
+	} else {
+
+		err = v.RetrieveWithFilter(ctx, []string{"ManagedEntity"}, []string{"name", "summary", "snapshot", "guest"}, &vms, property.Filter{"name": name})
+		if err != nil {
+			return fmt.Errorf("mo match using name %v", name)
+		}
+
+	}
+
+	if len(vms) != 1 {
+
+		type vmFailList struct {
+			name, moid string
+		}
+		out := make([]vmFailList, 0, 10)
+		for _, v := range vms {
+			out = append(out, vmFailList{v.Name, v.Self.Value})
+
+		}
+
+		return fmt.Errorf("expected a single vm, got %+v", out)
+	}
+
+	item := vms[0]
+	//printJson(false,item)
+	vm, mets, err := c.vmMetricS(item.Reference())
 	if err != nil {
 		return err
 	}
@@ -180,7 +293,7 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *Lim
 	// retrieve tags and object associations
 	pr := NewPrtgData("snapshots")
 	tm := NewTagMap()
-	err = c.tagList(tagIds, tm)
+	err = c.list(tagIds, tm)
 	if (err != nil) && !strings.Contains(err.Error(), "404") {
 		return
 	}
@@ -217,7 +330,7 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *Lim
 
 }
 
-func (c *Client) vmMetricS(filter property.Filter) (vm string, m map[string]Prtgitem, err error) {
+func (c *Client) vmMetricS(mor types.ManagedObjectReference) (vm string, m map[string]Prtgitem, err error) {
 	m = make(map[string]Prtgitem)
 
 	ctx := context.Background()
@@ -227,13 +340,13 @@ func (c *Client) vmMetricS(filter property.Filter) (vm string, m map[string]Prtg
 	}
 	defer func() { _ = v.Destroy(ctx) }()
 
-	vmsRefs, err := v.Find(ctx, []string{"VirtualMachine"}, filter) //todo need to fix this  find does not work
-	if err != nil {
-		return "", nil, fmt.Errorf("%v", err)
-	}
-	if len(vmsRefs) != 1 {
-		return "", nil, fmt.Errorf("filter issue, expected 1 vm and got %v, %v", len(vmsRefs), vmsRefs)
-	}
+	//vmsRefs, err := v.Find(ctx, []string{"VirtualMachine"}, filter) //todo need to fix this  find does not work
+	//if err != nil {
+	//	return "", nil, fmt.Errorf("%v", err)
+	//}
+	//if len(vmsRefs) != 1 {
+	//	return "", nil, fmt.Errorf("filter issue, expected 1 vm and got %v, %v", len(vmsRefs), vmsRefs)
+	//}
 
 	// Create a PerfManager
 	perfManager := performance.NewManager(c.c)
@@ -257,7 +370,7 @@ func (c *Client) vmMetricS(filter property.Filter) (vm string, m map[string]Prtg
 	}
 
 	// Query metrics
-	sample, err := perfManager.SampleByName(ctx, spec, names, vmsRefs)
+	sample, err := perfManager.SampleByName(ctx, spec, names, []types.ManagedObjectReference{mor})
 	if err != nil {
 		return "", nil, fmt.Errorf("%v", err)
 	}

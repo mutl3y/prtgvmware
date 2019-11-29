@@ -71,10 +71,6 @@ var snapshotsCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		moid, err := flags.GetString("Moid")
-		if err != nil {
-			log.Fatal(err)
-		}
 		tags, err := flags.GetStringSlice("Tags")
 		if err != nil {
 			log.Fatal(err)
@@ -82,8 +78,6 @@ var snapshotsCmd = &cobra.Command{
 
 		if name != "" {
 			f["name"] = name
-		} else if moid != "" {
-			f["self"] = moid
 		} else {
 			f["name"] = "*"
 		}
