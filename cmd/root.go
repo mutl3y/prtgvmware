@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
+	"time"
 )
 
 var cfgFile = "PRTG_VMware.yml"
@@ -73,6 +74,8 @@ func init() {
 	rootCmd.PersistentFlags().StringP("Name", "n", "", "name of vm, supports *partofname*")
 	rootCmd.PersistentFlags().StringP("Moid", "m", "", "exact id of vm, e.g. vm-12")
 	rootCmd.PersistentFlags().StringSliceP("Tags", "t", []string{}, "slice of tags to include")
+	rootCmd.PersistentFlags().DurationP("snapAge", "A", (7*24)*time.Hour, "ignore snapshots younger than")
+
 }
 
 // initConfig reads in config file and ENV variables if set.

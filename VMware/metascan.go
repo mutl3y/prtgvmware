@@ -8,7 +8,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 )
 
 type Item struct {
@@ -22,64 +24,17 @@ type prtg struct {
 	Items []Item `xml:"item"`
 }
 
-func (c *Client) Metascan(tags []string, tm *TagMap, scanTypes []string) (err error) {
-	for _, tag := range tags {
-		err := c.GetObjIds(tag, tm)
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-	}
-
-	moidNames := newMoidNames(c)
-
-	it := make([]Item, 0, len(scanTypes))
-
-	for _, scan := range scanTypes {
-		if scan == "vm" {
-			meta, err := vmMeta(tags, tm, moidNames)
-			if err != nil {
-				return err
-			}
-
-			it = append(it, meta.Items...)
-		}
-	}
-
-	meta := prtg{}
-	meta.Items = it
-	output, err := xml.MarshalIndent(meta, "", "   ")
-	if err != nil {
-		return
-	}
-
-	fmt.Printf("%+v", string(output))
-
-	return
-}
-
-func vmMeta(tags []string, tm *TagMap, moidMap *moidNames) (meta prtg, err error) {
-
-	meta = prtg{}
-	meta.Items = make([]Item, 0, 10)
-	for id := range tm.Data {
-		na := moidMap.GetName(id)
-		meta.Items = append(meta.Items, Item{
-			Name:    na,
-			ID:      id,
-			Exefile: filepath.Base(os.Args[0]),
-			Params:  fmt.Sprintf("summary -U https://%%host/sdk -u %%windowsuser -p %%windowspassword -n %v", na),
-		})
-	}
-	return
+type managedObject struct {
+	name, vmwareType string
 }
 
 type moidNames struct {
-	moid map[string]string
+	moid map[string]managedObject
 	mu   sync.RWMutex
 }
 
 func newMoidNames(c *Client) *moidNames {
-	m, err := c.getNames()
+	m, err := c.getmanagedObjectMap()
 	if err != nil {
 		log.Fatalf("failed to get managed object names")
 	}
@@ -93,11 +48,18 @@ func newMoidNames(c *Client) *moidNames {
 func (m *moidNames) GetName(moid string) string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.moid[moid]
+	return m.moid[moid].name
 
 }
 
-func (c *Client) getNames() (m map[string]string, err error) {
+func (m *moidNames) Gettype(moid string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.moid[moid].vmwareType
+
+}
+
+func (c *Client) getmanagedObjectMap() (m map[string]managedObject, err error) {
 	ctx := context.Background()
 	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{}, true)
 	if err != nil {
@@ -112,39 +74,66 @@ func (c *Client) getNames() (m map[string]string, err error) {
 		return
 	}
 
-	m = make(map[string]string, 0)
+	m = make(map[string]managedObject, 0)
 
 	for _, v := range objs {
-		m[v.Self.Value] = v.Name
+		m[v.Self.Value] = managedObject{
+			name:       v.Name,
+			vmwareType: v.Reference().Type,
+		}
 	}
 	return
 }
 
-//func (c *Client) getNameFromMoid(moid string){
-//	ctx := context.Background()
-//	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{}, true)
-//	if err != nil {
-//		return
-//	}
-//
-//	defer v.Destroy(ctx)
-//
-//	any := []string{"ManagedEntity"}
-//	var objs []mo.ManagedEntity
-//	err = v.RetrieveWithFilter(ctx, any, []string{"name"}, &objs, nil)
-//	if err != nil {
-//
-//		return
-//	}
-//
-//	m := make(map[string]string,0)
-//
-//	for _,v := range objs{
-//		m[v.Self.Value] = v.Name
-//	}
-//	printJson(false,m)
-//
-//
-//
-//}
-////todo remove hardcoding from sprintf
+func (c *Client) Metascan(tags []string, tm *TagMap, scanTypes []string, Age time.Duration) (err error) {
+	for _, tag := range tags {
+		err := c.GetObjIds(tag, tm)
+		if err != nil {
+			log.Fatalf("%v", err)
+		}
+	}
+	moidNames := newMoidNames(c)
+
+	meta, err := obMeta(tags, tm, moidNames, Age)
+	if err != nil {
+		return err
+	}
+
+	output, err := xml.MarshalIndent(meta, "", "   ")
+	if err != nil {
+		return
+	}
+
+	fmt.Printf("%+v", string(output))
+
+	return
+}
+
+func obMeta(tags []string, tm *TagMap, moidMap *moidNames, Age time.Duration) (meta prtg, err error) {
+
+	meta = prtg{}
+	meta.Items = make([]Item, 0, 10)
+	for id := range tm.Data {
+		na := moidMap.GetName(id)
+		switch moidMap.Gettype(id) {
+		case "VirtualMachine":
+
+			meta.Items = append(meta.Items, Item{
+				Name:    na,
+				ID:      id,
+				Exefile: filepath.Base(os.Args[0]),
+				Params:  fmt.Sprintf("summary -U https://%%host/sdk -u %%windowsuser -p %%windowspassword -m %v --snapAge %v -t %v", id, Age, strings.Join(tags, ",")),
+			})
+		case "Datastore":
+			meta.Items = append(meta.Items, Item{
+				Name:    na,
+				ID:      id,
+				Exefile: filepath.Base(os.Args[0]),
+				Params:  fmt.Sprintf("dssummary -U https://%%host/sdk -u %%windowsuser -p %%windowspassword -m %v -t %v", id, strings.Join(tags, ",")),
+			})
+		default:
+			fmt.Println("unsupported type", moidMap.Gettype(id))
+		}
+	}
+	return
+}

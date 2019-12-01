@@ -18,17 +18,17 @@ package cmd
 import (
 	"fmt"
 	"github.com/mutl3y/PRTG_VMware/VMware"
-	"github.com/spf13/cobra"
-	"github.com/vmware/govmomi/property"
-	"log"
 	"net/url"
+
+	"github.com/spf13/cobra"
 )
 
-// metascanCmd represents the metascan command
-var metascanCmd = &cobra.Command{
-	Use:   "metascan",
-	Short: "returns sensors for vmware vcenter instances by name or tag",
-	Long:  `used for autodiscovery of vmware sensors`,
+// dssummaryCmd represents the dssummary command
+var dssummaryCmd = &cobra.Command{
+	Use:   "dssummary",
+	Short: "ds summary for a single datastore",
+	Long: `
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 		flags := cmd.Flags()
 		u := &url.URL{}
@@ -47,41 +47,45 @@ var metascanCmd = &cobra.Command{
 
 		u, _ = u.Parse(urls)
 
+		js, err := flags.GetBool("json")
+		if err != nil {
+			fmt.Println(err)
+		}
+
 		c, err := VMware.NewClient(u, user, pww)
 		if err != nil {
-			log.Fatal(err)
-		}
-		f := property.Filter{}
-		name, err := flags.GetString("Name")
-		if err != nil {
-			log.Fatal(err)
-		}
-		tags, err := flags.GetStringSlice("Tags")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		scanTypes, err := flags.GetStringSlice("Type")
-		if err != nil {
-			log.Fatal(err)
-		}
-		if name != "" {
-			f["name"] = "*"
-		}
-		snapAge, err := flags.GetDuration("snapAge")
-		if err != nil {
-			log.Fatal(err)
-		}
-		tagMap := VMware.NewTagMap()
-
-		err = c.Metascan(tags, tagMap, scanTypes, snapAge)
-		if err != nil {
+			VMware.SensorWarn(fmt.Errorf("API connection error: %v", err), true)
 			return
 		}
+
+		moid, err := flags.GetString("Moid")
+		if err != nil {
+			VMware.SensorWarn(err, true)
+			return
+		}
+
+		lim, err := limitStruct(flags)
+		if err != nil {
+
+			VMware.SensorWarn(err, true)
+			return
+		}
+		name, err := flags.GetString("Name")
+		if err != nil {
+			VMware.SensorWarn(err, true)
+		}
+
+		err = c.DsSummary(name, moid, &lim, js)
+		if err != nil {
+			VMware.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
+
+		}
+
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(metascanCmd)
-	metascanCmd.Flags().StringSliceP("Type", "T", []string{"vm"}, "what to scan for")
+	rootCmd.AddCommand(dssummaryCmd)
+	dssummaryCmd.Flags().BoolP("json", "j", false, "pretty print json version of vmware data")
+
 }

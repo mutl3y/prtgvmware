@@ -8,24 +8,41 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var filename = filepath.Base(os.Args[0])
 
 type Create struct {
-	ID       string `xml:"id,attr"`
-	Kind     string `xml:"kind,attr"`
-	Meta     string `xml:"meta,attr"`
-	Requires string `xml:"requires,attr"`
-	Metadata struct {
-		Exefile   string `xml:"exefile"`
-		Exeparams string `xml:"exeparams"`
-	} `xml:"metadata"`
-	Createdata struct {
-		Priority string `xml:"priority"`
-		Interval string `xml:"interval"`
-		Tags     string `xml:"tags"`
-	} `xml:"createdata"`
+	ID         string     `xml:"id,attr"`
+	Kind       string     `xml:"kind,attr"`
+	Meta       string     `xml:"meta,attr,omitempty"`
+	Requires   string     `xml:"requires,attr"`
+	Metadata   Metadata   `xml:"metadata,omitempty"`
+	Createdata Createdata `xml:"createdata"`
+}
+type Metadata struct {
+	Exefile   string `xml:"exefile,omitempty"`
+	Exeparams string `xml:"exeparams,omitempty"`
+}
+
+type Createdata struct {
+	Priority           string `xml:"priority,omitempty"`
+	Interval           string `xml:"interval,omitempty"`
+	Count              string `xml:"count,omitempty"`
+	Errorintervalsdown string `xml:"errorintervalsdown,omitempty"`
+	Autoacknowledge    string `xml:"autoacknowledge,omitempty"`
+	Tags               string `xml:"tags,omitempty"`
+	Timeout            string `xml:"timeout,omitempty"`
+	Exefile            string `xml:"exefile,omitempty"`
+	Exeparams          string `xml:"exeparams,omitempty"`
+	Name               string `xml:"name,omitempty"`
+}
+
+type Check struct {
+	Text string `xml:",chardata"`
+	ID   string `xml:"id,attr"`
+	Meta string `xml:"meta,attr"`
 }
 
 func NewCreate(id, params, tags, intervalSecs string) Create {
@@ -34,21 +51,16 @@ func NewCreate(id, params, tags, intervalSecs string) Create {
 		Kind:     "exexml",
 		Meta:     "customexexmlscan",
 		Requires: "ping",
-		Metadata: struct {
-			Exefile   string `xml:"exefile"`
-			Exeparams string `xml:"exeparams"`
-		}{
+		Metadata: Metadata{
 			Exefile:   filename,
 			Exeparams: params,
 		},
-		Createdata: struct {
-			Priority string `xml:"priority"`
-			Interval string `xml:"interval"`
-			Tags     string `xml:"tags"`
-		}{
-			Priority: "4",
-			Interval: intervalSecs,
-			Tags:     tags,
+		Createdata: Createdata{
+			Priority:           "3",
+			Interval:           intervalSecs,
+			Tags:               tags,
+			Errorintervalsdown: "5",
+			Autoacknowledge:    "1",
 		},
 	}
 	return c
@@ -68,21 +80,47 @@ type Devicetemplate struct {
 	Create []Create `xml:"create"`
 }
 
-func NewDeviceTemplate() *Devicetemplate {
+func NewDeviceTemplate(Age time.Duration, Tags string) *Devicetemplate {
 	d := &Devicetemplate{
 		XMLName:  xml.Name{},
 		Text:     "",
 		ID:       "customexexml",
 		Name:     "prtgvmware",
-		Priority: "4",
-		Check: struct {
-			Text string `xml:",chardata"`
-			ID   string `xml:"id,attr"`
-			Meta string `xml:"meta,attr"`
-		}{"", "ping", "ping"},
-		Create: make([]Create, 0, 10),
+		Priority: "3",
+		Check:    Check{"", "ping", "ping"},
+		Create:   make([]Create, 0, 10),
 	}
+
+	// add a ping sensor
+
+	d.Create = append(d.Create, pingSensor, snapShotSensor(Age, Tags))
 	return d
+}
+
+var pingSensor = Create{
+	ID:       "pingsensor",
+	Kind:     "ping",
+	Requires: "ping",
+	Createdata: Createdata{
+		Priority: "5",
+		Interval: "5",
+		Timeout:  "20",
+		Count:    "5",
+	},
+}
+
+func snapShotSensor(Age time.Duration, Tags string) Create {
+	name := fmt.Sprintf("snapshots older than %v hours", Age.Hours())
+	c := Create{
+		ID:       "snapshots",
+		Kind:     "exexml",
+		Meta:     "",
+		Requires: "ping",
+		Createdata: Createdata{Name: name, Tags: Tags, Errorintervalsdown: "5", Autoacknowledge: "1", Priority: "2", Exefile: filepath.Base(os.Args[0]),
+			Exeparams: fmt.Sprintf("snapshots -U https://%%host/sdk -u %%windowsuser -p %%windowspassword --snapAge %v -t %v --MaxWarn 1 --MaxErr 3", Age, Tags),
+		},
+	}
+	return c
 }
 
 func (dev *Devicetemplate) add(cr Create) error {
@@ -90,7 +128,7 @@ func (dev *Devicetemplate) add(cr Create) error {
 	return nil
 }
 func (dev *Devicetemplate) save() (err error) {
-	ou, err := xml.MarshalIndent(dev, "", "    ")
+	ou, err := xml.MarshalIndent(dev, "", "  ")
 	if err != nil {
 		return
 	}
@@ -102,18 +140,19 @@ func (dev *Devicetemplate) save() (err error) {
 	return ioutil.WriteFile("prtgvmware.odt", b.Bytes(), os.ModePerm)
 }
 
-func GenTemplate(tags []string) error {
+func GenTemplate(tags []string, Age time.Duration) error {
 	//fmt.Println(basetemplate)
+	creds := "-U https://%host/sdk -u %windowsuser -p %windowspassword"
+	d := NewDeviceTemplate(Age, strings.Join(tags, ","))
 
-	d := NewDeviceTemplate()
-
-	ch := NewCreate("VM Summary", "metascan -U https://%host/sdk -u %windowsuser -p %windowspassword", strings.Join(tags, ","), "60")
-
+	ch1 := fmt.Sprintf("metascan %v --snapAge %v -t %v", creds, Age, strings.Join(tags, ","))
+	ch := NewCreate("metascan", ch1, strings.Join(tags, ","), "60")
 	err := d.add(ch)
 	if err != nil {
 		return fmt.Errorf("failed to add check %v", err)
 	}
 
+	// save to disk
 	err = d.save()
 	if err != nil {
 		return fmt.Errorf("failed to save file %v", err)

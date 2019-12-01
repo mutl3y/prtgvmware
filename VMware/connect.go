@@ -144,9 +144,11 @@ func NewClient(u *url.URL, user, pw string) (c Client, err error) {
 	} else {
 
 		soapClient := soap.NewClient(u, true)
-		c.c, err = vim25.NewClient(context.Background(), soapClient)
+		timeout := context.Background()
+		timeout, _ = context.WithTimeout(timeout, 5*time.Second)
+		c.c, err = vim25.NewClient(timeout, soapClient)
 		if err != nil {
-			return c, err
+			return c, fmt.Errorf("unable to connect to %v ", u)
 		}
 		c.r = rest.NewClient(c.c)
 

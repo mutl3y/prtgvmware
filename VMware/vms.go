@@ -4,15 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/vmware/govmomi/find"
-	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/performance"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 	"log"
-	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,7 +20,7 @@ var (
 	debug          bool
 	summaryDefault = []string{
 		"disk.read.average", "disk.write.average", "disk.usage.average",
-		"cpu.ready.summation", "cpu.usage.average", "cpu.ready.summation",
+		"cpu.readiness.average", "cpu.usage.average",
 		"mem.active.average", "mem.consumed.average", "mem.usage.average",
 		"net.bytesRx.average", "net.bytesTx.average", "net.usage.average",
 		"datastore.datastoreNormalReadLatency.latest", "datastore.datastoreNormalWriteLatency.latest",
@@ -31,130 +28,8 @@ var (
 	}
 )
 
-func inStringSlice(str string, strSlice []string) bool {
-	for _, v := range strSlice {
-		if str == v {
-			return true
-		}
-	}
-	return false
-}
-
-//VmSummary
-// Takes a VMWare property filter such as property.filter{"name":"*vm1"}
-// txt to display results in json
-// age exclude snapshots younger than time.duration
-func (c *Client) VmSummary(f property.Filter, lim *LimitsStruct, age time.Duration, txt bool) error {
-	start := time.Now()
-	ctx := context.Background()
-	if c.m == nil {
-		return fmt.Errorf("no manager")
-	}
-	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
-	if err != nil {
-		return fmt.Errorf("con view 1 %v", err)
-	}
-	defer func() { _ = v.Destroy(ctx) }()
-
-	var vms2 []mo.VirtualMachine
-	kind := []string{"VirtualMachine"}
-
-	err = v.RetrieveWithFilter(ctx, kind, []string{"name", "summary", "snapshot", "guest"}, &vms2, f)
-	if err != nil {
-		if err.Error() == "object references is empty" {
-			var s string
-			for k, v := range f {
-				if s != "" {
-					s = s + ","
-				}
-				s = s + k + "=" + v.(string)
-			}
-			return fmt.Errorf("mo match using property filter %v", s)
-		}
-
-		return fmt.Errorf("vmsummary retrieve %v %v", f, err)
-	}
-
-	if len(vms2) != 1 {
-
-		type vmFailList struct {
-			name, moid string
-		}
-		out := make([]vmFailList, 0, 10)
-		for _, v := range vms2 {
-			out = append(out, vmFailList{v.Name, v.Self.Value})
-
-		}
-
-		return fmt.Errorf("expected a single vm, got %+v", out)
-	}
-
-	item := vms2[0]
-
-	vm, mets, err := c.vmMetricS(item.Reference())
-	if err != nil {
-		return err
-	}
-	var co int
-	if item.Snapshot != nil {
-		co, err = snapshotCount(time.Now().Add(-age), item.Snapshot.RootSnapshotList)
-		if err != nil {
-			return err
-		}
-	}
-	pr := NewPrtgData(item.Name)
-	pr.moid = vm
-	err = pr.Add(fmt.Sprintf("Snapshots Older Than %v", age), "One", co, lim)
-
-	for _, v := range item.Guest.Disk {
-		d := v.DiskPath
-		ca := v.Capacity
-		free := v.FreeSpace
-		one := ca / 100
-		perc := free / one
-		_ = pr.Add("disk free "+d, "KiloByte", free/1000, &LimitsStruct{})
-		_ = pr.Add("disk free % "+d, "Percent", perc, &LimitsStruct{
-			MinWarn: 20,
-			MinErr:  10,
-			WarnMsg: "Warning Low Space",
-			ErrMsg:  "Critical disk space",
-		})
-	}
-
-	guestLimits := &LimitsStruct{
-		MinErr: 0.5,
-		ErrMsg: "tools not running",
-	}
-	if item.Guest.ToolsRunningStatus == "guestToolsRunning" {
-		_ = pr.Add("guest tools running", "Custom", true, guestLimits)
-	} else {
-		_ = pr.Add("guest tools running", "Custom", false, guestLimits)
-
-	}
-
-	for k, v := range mets {
-		if inStringSlice(k, summaryDefault) {
-			st, err := singleStat(v.Value)
-			if err != nil {
-				return err
-			}
-
-			if st != nil {
-				err = pr.Add(k, v.Unit, st, &LimitsStruct{})
-
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	err = pr.Print(time.Since(start), txt)
-
-	return err
-}
-
-func (c *Client) VmSummary2(name, moid string, lim *LimitsStruct, age time.Duration, txt bool) error {
+func (c *Client) VmSummary(name, moid string, lim *LimitsStruct, age time.Duration, txt bool, sensors []string) error {
+	summaryDefault = append(summaryDefault, sensors...)
 	start := time.Now()
 	ctx := context.Background()
 	if c.m == nil {
@@ -173,7 +48,7 @@ func (c *Client) VmSummary2(name, moid string, lim *LimitsStruct, age time.Durat
 		v0 := mo.VirtualMachine{}
 		err = v.Properties(ctx, types.ManagedObjectReference{
 			Type:  "VirtualMachine",
-			Value: "vm-13",
+			Value: moid,
 		}, []string{"name", "summary", "snapshot", "guest"}, &v0)
 		if err != nil {
 			return err
@@ -217,31 +92,16 @@ func (c *Client) VmSummary2(name, moid string, lim *LimitsStruct, age time.Durat
 	}
 	pr := NewPrtgData(item.Name)
 	pr.moid = vm
-	err = pr.Add(fmt.Sprintf("Snapshots Older Than %v", age), "One", co, lim)
+	err = pr.Add(fmt.Sprintf("Snapshots Older Than %v", age), "Count", "One", co, lim, "", false)
 
-	for _, v := range item.Guest.Disk {
-		d := v.DiskPath
-		ca := v.Capacity
-		free := v.FreeSpace
-		one := ca / 100
-		perc := free / one
-		_ = pr.Add("disk free "+d, "KiloByte", free/1000, &LimitsStruct{})
-		_ = pr.Add("disk free % "+d, "Percent", perc, &LimitsStruct{
-			MinWarn: 20,
-			MinErr:  10,
-			WarnMsg: "Warning Low Space",
-			ErrMsg:  "Critical disk space",
-		})
-	}
-
-	guestLimits := &LimitsStruct{
-		MinErr: 0.5,
-		ErrMsg: "tools not running",
-	}
+	//	guestLimits := &LimitsStruct{
+	//		MinErr: 0.5,
+	//		ErrMsg: "tools not running",
+	//	}
 	if item.Guest.ToolsRunningStatus == "guestToolsRunning" {
-		_ = pr.Add("guest tools running", "Custom", true, guestLimits)
+		_ = pr.Add("guest tools running", "Custom", "", true, &LimitsStruct{}, "prtg.standardlookups.boolean.statetrueok", false)
 	} else {
-		_ = pr.Add("guest tools running", "Custom", false, guestLimits)
+		_ = pr.Add("guest tools running", "Custom", "", false, &LimitsStruct{}, "prtg.standardlookups.boolean.statetrueok", false)
 
 	}
 
@@ -253,15 +113,27 @@ func (c *Client) VmSummary2(name, moid string, lim *LimitsStruct, age time.Durat
 			}
 
 			if st != nil {
-				err = pr.Add(k, v.Unit, st, &LimitsStruct{})
-
+				err = pr.Add(k, v.Unit, v.volumeSize, st, &LimitsStruct{}, "", false)
 				if err != nil {
 					return err
 				}
 			}
 		}
 	}
-
+	for _, v := range item.Guest.Disk {
+		d := v.DiskPath
+		ca := v.Capacity
+		free := v.FreeSpace
+		one := ca / 100
+		perc := free / one
+		_ = pr.Add("free Bytes "+d, "BytesDisk", "KiloByte", free/1000, &LimitsStruct{}, "", true)
+		_ = pr.Add("free Space (Percent) "+d, "Percent", "", perc, &LimitsStruct{
+			MinWarn: 20,
+			MinErr:  10,
+			WarnMsg: "Warning Low Space",
+			ErrMsg:  "Critical disk space",
+		}, "", false)
+	}
 	err = pr.Print(time.Since(start), txt)
 
 	return err
@@ -285,7 +157,7 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *Lim
 
 	// retrieve snapshot info
 	var vms []mo.VirtualMachine
-	err = v.RetrieveWithFilter(ctx, []string{"VirtualMachine"}, []string{"snapshot", "name"}, &vms, f)
+	err = v.RetrieveWithFilter(ctx, []string{"ManagedEntity"}, []string{"snapshot", "name"}, &vms, f)
 	if err != nil {
 		return
 	}
@@ -305,20 +177,21 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *Lim
 	noTags := len(tagIds) == 0
 
 	for _, v := range vms {
+
 		wg.Add(1)
 		go func(v mo.VirtualMachine) {
 			defer wg.Done()
 			var co int
 			if v.Snapshot != nil {
 				co, err = snapshotCount(b, v.Snapshot.RootSnapshotList)
-				if err == nil {
+				if err != nil {
 					return
 				}
 			}
 
 			if noTags || tm.check(v.Self.Value, tagIds) {
 				stat := fmt.Sprintf("%v_%v", v.Self.Value, v.Name)
-				err = pr.Add(stat, "One", co, lim)
+				err = pr.Add(stat, "One", "Count", co, lim, "", false)
 			}
 		}(v)
 
@@ -392,7 +265,6 @@ func (c *Client) vmMetricS(mor types.ManagedObjectReference) (vm string, m map[s
 			vm = metric.Entity.Value
 			counter := counters[n]
 			units := counter.UnitInfo.GetElementDescription().Label
-
 			instance := v.Instance
 			if instance == "*" {
 				instance = ""
@@ -411,9 +283,12 @@ func (c *Client) vmMetricS(mor types.ManagedObjectReference) (vm string, m map[s
 					continue
 				}
 
+				u, s := VmMetType(units, counter.GroupInfo.GetElementDescription().Key)
+
 				m[n] = Prtgitem{
-					Value: st,
-					Unit:  VmMetType(units),
+					Value:      st,
+					Unit:       u,
+					volumeSize: s, //todo add speedsize lookup
 				}
 			}
 		}
@@ -486,58 +361,22 @@ func (c *Client) hostMetrics(path string) (hs string, m map[string]Prtgitem, err
 	return hss[0].Name, nil, err
 }
 
-func (c *Client) dsMetrics(path string) (ds string, m map[string]Prtgitem, err error) {
-	m = make(map[string]Prtgitem)
-	ctx := context.Background()
-	//dv, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"Datastore"}, true)
-	//if err != nil {
-	//	return "", nil, nil
-	//}
-	//
-	//defer dv.Destroy(ctx)
-	//
-	//// Retrieve summary property for all datastores
-	//// Reference: http://pubs.vmware.com/vsphere-60/topic/com.vmware.wssdk.apiref.doc/vim.Datastore.html
+func unitType(s string) string {
+	switch s {
+	case "net":
+		return "BytesBandwidth"
+	case "disk", "virtualDisk", "datastore":
+		return "BytesDisk"
+	case "mem":
+		return "BytesMemory"
+	default:
+		return "Custom"
 
-	//fmt.Printf("%+v\n",dss[0].)
-	//
-	//dsRefs, err := dv.Find(ctx, []string{"Datastore"},nil) //todo need to fix this  find does not work
-	//if err != nil {
-	//	return "", nil, fmt.Errorf("%v", err)
-	//}
-	//if len(dsRefs) != 1 {
-	//	return "", nil, fmt.Errorf("filter issue, expected 1 vm and got %v, %v", len(dsRefs), dsRefs)
-	//}
-	//
-	//var dss []mo.Datastore
-	//err = dv.Retrieve(ctx, []string{"Datastore"}, []string{"summary"}, &dss)
-	//if err != nil {
-	//	return "", nil, nil
-	//}
-	//if len(dss) == 0 {
-	//	return "", nil, fmt.Errorf("no ds returned")
-	//}
-	finder := find.NewFinder(c.c, true)
-	dc, err := finder.Datacenter(ctx, "*")
-	if err != nil {
-		return "", nil, nil
-	}
-	finder.SetDatacenter(object.NewDatacenter(c.c, dc.Reference()))
-
-	finder.SetDatacenter(dc)
-	dso, err := finder.Datastore(ctx, "*1")
-	if err != nil {
-		return "", nil, fmt.Errorf("dsf.datastore %v", err)
 	}
 
-	fmt.Printf("dso %+v\n", dso)
-	srm := object.NewStorageResourceManager(c.c)
-	s, err := srm.QueryDatastorePerformanceSummary(ctx, dso)
-	fmt.Println("ds ", s)
-	return dso.Name(), nil, err
 }
 
-func VmMetType(k string) string {
+func VmMetType(u, s string) (unit, size string) {
 	const (
 		BytesBandwidth string = "BytesBandwidth"
 		BytesDisk      string = "BytesDisk"
@@ -574,29 +413,60 @@ func VmMetType(k string) string {
 		Hour   string = "Hour"
 		Day    string = "Day"
 	)
-	prtgmap := make(map[string]string)
-	prtgmap["KB"] = KiloByte
-	prtgmap["MB"] = MegaByte
-	prtgmap["GB"] = GigaByte
-	prtgmap["TB"] = TeraByte
 
-	prtgmap["num"] = One
-	prtgmap["ms"] = TimeResponse
-	prtgmap["%"] = Percent
-	prtgmap["KBps"] = KiloBit
-	prtgmap["MHz"] = CPU
-	prtgmap["℃"] = Temperature
-	prtgmap["µs"] = Custom
-	prtgmap["s"] = Second
-	prtgmap["W"] = Custom
-	prtgmap["J"] = Custom
+	switch u {
+	case "KB":
+		unit = unitType(s)
+		size = KiloByte
 
-	t := prtgmap[k]
-	if t == "" {
-		fmt.Printf("not reconized %v\n", k)
-		return k
+	case "MB":
+		size = MegaByte
+		unit = unitType(s)
+
+	case "GB":
+		size = GigaByte
+		unit = unitType(s)
+
+	case "TB":
+		size = TeraByte
+		unit = unitType(s)
+
+	case "num":
+		unit = Count
+	case "ms":
+		unit = TimeResponse
+
+	case "%":
+		unit = Percent
+	case "KBps":
+		size = KiloBit
+
+		switch s {
+		case "net", "mem":
+			unit = "SpeedNet"
+		case "disk", "virtualDisk", "datastore":
+			unit = "SpeedDisk"
+
+		default:
+			unit = "Custom"
+			printJson(false, "missed KBps type", s)
+
+		}
+	case "MHz":
+		unit = CPU
+		size = Mega
+
+	case "℃":
+		size = Temperature
+	case "µs":
+		size = Custom
+	default:
+		size = u
+		//	printJson(false,u)
+
 	}
-	return t
+
+	return
 }
 
 func snapshotCount(before time.Time, snp []types.VirtualMachineSnapshotTree) (int, error) {
@@ -638,11 +508,12 @@ func singleStat(stat interface{}) (interface{}, error) {
 			fmt.Println("cant parse this ************************************************************")
 			return nil, err
 		}
-		fl = math.RoundToEven(fl*1000) / 1000
+		fl = float64(int(fl*100) / 100)
 		rtnStat = fl
 	case []float64:
 		st := stat.([]float64)
-		rtnStat = st[0]
+		fl := float64(int(st[0]*100) / 100)
+		rtnStat = fl
 	case []int64:
 		st := stat.([]int64)
 		rtnStat = st[0]
@@ -670,6 +541,15 @@ func printJson(txt bool, i ...interface{}) {
 	}
 }
 
+func inStringSlice(str string, strSlice []string) bool {
+	for _, v := range strSlice {
+		if str == v {
+			return true
+		}
+	}
+	return false
+}
+
 func tagCheck(n string, t []string) (found bool) {
 	for _, check := range t {
 		if n == check {
@@ -678,4 +558,101 @@ func tagCheck(n string, t []string) (found bool) {
 	}
 
 	return
+}
+
+func (c *Client) DsSummary(name, moid string, lim *LimitsStruct, js bool) (err error) {
+
+	start := time.Now()
+	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
+	dv, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"Datastore"}, true)
+	if err != nil {
+		return nil
+	}
+
+	defer dv.Destroy(ctx)
+
+	id := types.ManagedObjectReference{
+		Type:  "Datastore",
+		Value: "",
+	}
+
+	if moid != "" {
+		id.Value = moid
+	} else {
+		dss := []mo.Datastore{}
+		err = dv.RetrieveWithFilter(ctx, []string{"ManagedEntity"}, []string{"name", "summary"}, &dss, property.Filter{"name": name})
+		if err != nil {
+			return fmt.Errorf("mo match using name %v", name)
+		}
+		id = dss[0].Reference()
+	}
+
+	v0 := mo.Datastore{}
+	err = dv.Properties(ctx, id, []string{"name", "summary"}, &v0)
+	if err != nil {
+		return fmt.Errorf("ds object %v", err)
+	}
+	pr := NewPrtgData(v0.Name)
+	pr.moid = id.Value
+
+	whole := v0.Summary.Capacity
+	free := v0.Summary.FreeSpace
+	p1 := whole / 100
+	freep := free / p1
+	provisioned := 100 - freep
+	_ = pr.Add("Available capacity", "BytesDisk", "KiloByte", whole, &LimitsStruct{}, "", false)
+	_ = pr.Add("Free Bytes", "BytesDisk", "KiloByte", free, &LimitsStruct{
+		MinWarn: 10,
+		MinErr:  5,
+		WarnMsg: "Warning Low Space",
+		ErrMsg:  "Critical disk space",
+	}, "", false)
+	_ = pr.Add("Free space (Percent)", "Percent", "", freep, lim, "", false)
+	_ = pr.Add("Provisioned", "Percent", "", provisioned, &LimitsStruct{}, "", false)
+	mm := "0"
+	if v0.Summary.MaintenanceMode != "normal" {
+		mm = "1"
+	}
+
+	_ = pr.Add("Maintenance Mode", "Custom", "", mm, &LimitsStruct{MaxWarn: 1}, "prtg.standardlookups.boolean.statefalseok", false)
+	//dsRefs, err := dv.Find(ctx, []string{"Datastore"},nil) //todo need to fix this  find does not work
+	//if err != nil {
+	//	return "", nil, fmt.Errorf("%v", err)
+	//}
+	//if len(dsRefs) != 1 {
+	//	printJson(false,dsRefs)
+	//
+	//	return "", nil, fmt.Errorf("filter issue, expected 1 vm and got %v, %v", len(dsRefs), dsRefs)
+	//}
+	//
+	//var dss []mo.Datastore
+	//err = dv.Retrieve(ctx, []string{"Datastore"}, []string{"summary"}, &dss)
+	//if err != nil {
+	//	return "", nil, nil
+	//}
+	//if len(dss) == 0 {
+	//	return "", nil, fmt.Errorf("no ds returned")
+	//}
+	//
+	//finder := find.NewFinder(c.c, true)
+	//dc, err := finder.Datacenter(ctx, "*")
+	//if err != nil {
+	//	return "", nil, nil
+	//}
+	//finder.SetDatacenter(object.NewDatacenter(c.c, dc.Reference()))
+	//
+	//finder.SetDatacenter(dc)
+	//dso, err := finder.Datastore(ctx, "*1")
+	//if err != nil {
+	//	return "", nil, fmt.Errorf("dsf.datastore %v", err)
+	//}
+	//
+	////fmt.Printf("dso %+v\n", dso)
+	////srm := object.NewStorageResourceManager(c.c)
+	////s, err := srm.QueryDatastorePerformanceSummary(ctx, dso)
+	////printJson(false, s)
+	//return dso.Name(), nil, err
+	err = pr.Print(time.Since(start), js)
+	return nil
 }

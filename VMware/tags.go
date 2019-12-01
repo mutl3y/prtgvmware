@@ -70,9 +70,12 @@ func (c *Client) GetObjIds(tag string, tm *TagMap) (err error) {
 
 	objs, err := manager.GetAttachedObjectsOnTags(ctx, []string{tag})
 	if err == nil {
-		for _, obj := range objs[0].ObjectIDs {
-			tm.add(obj.Reference(), tag)
+		if len(objs) > 0 {
+			for _, obj := range objs[0].ObjectIDs {
+				tm.add(obj.Reference(), tag)
+			}
 		}
+
 	}
 	return
 }

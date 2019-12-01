@@ -17,7 +17,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"time"
 
@@ -61,25 +60,34 @@ var summaryCmd = &cobra.Command{
 
 		c, err := VMware.NewClient(u, user, pww)
 		if err != nil {
-			log.Fatal(err)
+			VMware.SensorWarn(fmt.Errorf("API connection error: %v", err), true)
+			return
 		}
 
 		name, err := flags.GetString("Name")
 		if err != nil {
-			log.Fatal(err)
+			VMware.SensorWarn(err, true)
+			return
 		}
 		moid, err := flags.GetString("Moid")
 		if err != nil {
-			log.Fatal(err)
+			VMware.SensorWarn(err, true)
+			return
 		}
 
 		lim, err := limitStruct(flags)
 		if err != nil {
-			log.Fatal(err)
+
+			VMware.SensorWarn(err, true)
+			return
 		}
-		err = c.VmSummary2(name, moid, &lim, snapAge, js)
+
+		extraSensors, err := flags.GetStringSlice("vmmetrics")
+
+		err = c.VmSummary(name, moid, &lim, snapAge, js, extraSensors)
 		if err != nil {
-			fmt.Println(err)
+			VMware.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
+
 		}
 
 	},
@@ -88,18 +96,7 @@ var summaryCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(summaryCmd)
 	summaryCmd.Flags().BoolP("json", "j", false, "pretty print json version of vmware data")
-	//summaryCmd.Flags().StringP("ptype", "t", "self", "managed object property type. eg self or name")
-	//summaryCmd.Flags().StringP("psearch", "U", "prtgUtil", "managed object property")
 	summaryCmd.Flags().DurationP("snapAge", "P", (7*24)*time.Hour, "ignore snapshots younger than")
-	//	summaryCmd.Flags().StringToStringP("propertyFilter", "F", map[string]string{"name": "*1"}, "vmware property filter")
+	summaryCmd.Flags().StringSlice("vmmetrics", []string{}, "include additonal vm metrics, I.E. cpu.ready.summation")
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// summaryCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// summaryCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

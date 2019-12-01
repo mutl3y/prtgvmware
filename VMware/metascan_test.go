@@ -3,6 +3,7 @@ package VMware
 import (
 	"net/url"
 	"testing"
+	"time"
 )
 
 func TestClient_Metascan(t *testing.T) {
@@ -26,7 +27,7 @@ func TestClient_Metascan(t *testing.T) {
 				t.Fatal("cant get client")
 			}
 			gotRtnMap := NewTagMap()
-			if err := c.Metascan(tt.tags, gotRtnMap, []string{"vm"}); (err != nil) != tt.wantErr {
+			if err := c.Metascan(tt.tags, gotRtnMap, []string{"vm"}, time.Minute); (err != nil) != tt.wantErr {
 				t.Errorf("Metascan() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

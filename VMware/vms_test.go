@@ -9,50 +9,50 @@ import (
 	"time"
 )
 
+//func TestClient_vmSummary(t *testing.T) {
+//	type args struct {
+//		searchType, searchItem string
+//		usr, pw                string
+//		txt                    bool
+//	}
+//	u, err := url.Parse("https://192.168.59.4/sdk")
+//	if err != nil {
+//		t.Fatalf("failed to parse url")
+//	}
+//
+//	tests := []struct {
+//		name    string
+//		ur      *url.URL
+//		args    args
+//		wantErr bool
+//	}{
+//		{"1", &url.URL{}, args{"name", "*1", "", "", false}, false},
+//		{"2", &url.URL{}, args{"self", "*vm-30", "", "", false}, false},
+//		{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
+//		//{"4", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
+//		//{"5", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
+//		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
+//		{"5", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", false}, false},
+//		//{"6", u, args{"tags", "windows", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
+//	}
+//	//	debug = true
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw)
+//			if err != nil {
+//				t.Errorf("%+v", err)
+//			}
+//			f := property.Filter{tt.args.searchType: tt.args.searchItem}
+//			lim := &LimitsStruct{}
+//			err = c.VmSummary(f, lim, time.Hour, tt.args.txt)
+//			if (err != nil) && !tt.wantErr {
+//				t.Fatal(err)
+//			}
+//		})
+//	}
+//}
+
 func TestClient_vmSummary(t *testing.T) {
-	type args struct {
-		searchType, searchItem string
-		usr, pw                string
-		txt                    bool
-	}
-	u, err := url.Parse("https://192.168.59.4/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
-
-	tests := []struct {
-		name    string
-		ur      *url.URL
-		args    args
-		wantErr bool
-	}{
-		{"1", &url.URL{}, args{"name", "*1", "", "", false}, false},
-		{"2", &url.URL{}, args{"self", "*vm-30", "", "", false}, false},
-		{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
-		//{"4", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
-		//{"5", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
-		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"5", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", false}, false},
-		//{"6", u, args{"tags", "windows", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
-	}
-	//	debug = true
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw)
-			if err != nil {
-				t.Errorf("%+v", err)
-			}
-			f := property.Filter{tt.args.searchType: tt.args.searchItem}
-			lim := &LimitsStruct{}
-			err = c.VmSummary(f, lim, time.Hour, tt.args.txt)
-			if (err != nil) && !tt.wantErr {
-				t.Fatal(err)
-			}
-		})
-	}
-}
-
-func TestClient_vmSummary2(t *testing.T) {
 	type args struct {
 		searchName, searchMoid string
 		usr, pw                string
@@ -75,8 +75,8 @@ func TestClient_vmSummary2(t *testing.T) {
 		////{"4", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
 		////{"5", u, args{"name", "vcenter", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
 		//{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"6", u, args{"", "vm-13", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"5", u, args{"vcenter", "", "prtg@heynes.local", ".l3tm31n", false}, false},
+		{"6", u, args{"", "vm-15", "prtg@heynes.local", ".l3tm31n", true}, false},
+		{"5", u, args{"", "vm-13", "prtg@heynes.local", ".l3tm31n", false}, false},
 
 		//{"6", u, args{"tags", "windows", "prtgSensor@heynes.local", ".l3tm31n", true}, false},
 	}
@@ -88,7 +88,7 @@ func TestClient_vmSummary2(t *testing.T) {
 				t.Errorf("%+v", err)
 			}
 			lim := &LimitsStruct{}
-			err = c.VmSummary2(tt.args.searchName, tt.args.searchMoid, lim, time.Hour, tt.args.txt)
+			err = c.VmSummary(tt.args.searchName, tt.args.searchMoid, lim, time.Hour, tt.args.txt, []string{"cpu.ready.summation"})
 			if (err != nil) && !tt.wantErr {
 				t.Fatal(err)
 			}
@@ -421,35 +421,39 @@ func TestClient_MetricSeries(t *testing.T) {
 	}
 }
 
-//func TestClient_dsMetrics(t *testing.T) {
-//	tests := []struct {
-//		name    string
-//		filter  property.Filter
-//		wantErr bool
-//	}{
-//		{"", property.Filter{"name": "*1"}, false},
-//		//{"", property.Filter{"self": "*6"}, false},
-//		//{"", property.Filter{"self": "VirtualMachine:vm-26"}, false},
-//		//{"", property.Filter{"name": "*2"}, true},
-//		//{"", nil, true},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			c, err := NewClient(&url.URL{}, "", "")
-//			if err != nil {
-//				t.Errorf("failed %v", err)
-//			}
-//
-//			gotDs, gotM, err := c.dsMetrics("*1")
-//			if (err != nil) != tt.wantErr {
-//				t.Errorf("dsMetrics() error = %v, wantErr %v", err, tt.wantErr)
-//				return
-//			}
-//
-//			t.Logf("%v %v", gotDs, gotM)
-//		})
-//	}
-//}
+func TestClient_DsSummarys(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		na      string
+		moid    string
+		wantErr bool
+	}{
+		//	{"", "", true},
+		{"fail", "", "datastore-1", true},
+		{"name", "datastore1", "", false},
+		{"moid", "", "datastore-10", false},
+	}
+	u, err := url.Parse("https://192.168.59.4/sdk")
+	if err != nil {
+		t.Fatalf("failed to parse url")
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
+			if err != nil {
+				t.Errorf("failed %v", err)
+			}
+
+			err = c.DsSummary(tt.na, tt.moid, &LimitsStruct{}, false)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DsMetrics() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+		})
+	}
+}
 func TestClient_hostMetrics(t *testing.T) {
 	tests := []struct {
 		name    string

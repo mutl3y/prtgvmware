@@ -31,26 +31,26 @@ use this to support autodiscovery using VMware tags
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
+
 		flags := cmd.Flags()
 		tags, err := flags.GetStringSlice("Tags")
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = VMware.GenTemplate(tags)
+		snapAge, err := flags.GetDuration("snapAge")
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = VMware.GenTemplate(tags, snapAge)
 		fmt.Println(err)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(templateCmd)
+	err := rootCmd.MarkPersistentFlagRequired("Tags")
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// templateCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// templateCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

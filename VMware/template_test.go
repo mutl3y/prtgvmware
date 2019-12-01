@@ -2,6 +2,7 @@ package VMware
 
 import (
 	"testing"
+	"time"
 )
 
 func TestGenTemplate(t *testing.T) {
@@ -12,7 +13,7 @@ func TestGenTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := GenTemplate([]string{"windows", "PRTG"})
+			err := GenTemplate([]string{}, time.Second)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}

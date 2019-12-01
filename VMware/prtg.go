@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	prtgSensor "github.com/PRTG/go-prtg-sensor-api"
+	"log"
 	"sort"
 	"sync"
 	"time"
@@ -12,9 +13,12 @@ import (
 type Prtgitem struct {
 	Value            interface{}
 	Unit             string
+	volumeSize       string
+	Lookup           string
 	WarnMsg, ErrMsg  string
 	MinWarn, MaxWarn float64
 	MinErr, MaxErr   float64
+	Hide             bool
 }
 
 type PrtgData struct {
@@ -51,7 +55,8 @@ type LimitsStruct struct {
 	WarnMsg, ErrMsg  string
 }
 
-func (p *PrtgData) Add(name, unit string, value interface{}, lim *LimitsStruct) error {
+func (p *PrtgData) Add(name, unit, volumeSize string, value interface{}, lim *LimitsStruct, lookup string, hide bool) error {
+
 	st, err := singleStat(value)
 	if err != nil {
 		return err
@@ -59,9 +64,11 @@ func (p *PrtgData) Add(name, unit string, value interface{}, lim *LimitsStruct) 
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	pi := Prtgitem{
-		Value: st,
-		Unit:  unit,
+		Value:      st,
+		Unit:       unit,
+		volumeSize: volumeSize,
 	}
+	pi.Hide = hide
 	if lim.ErrMsg != "" {
 		pi.ErrMsg = lim.ErrMsg
 	}
@@ -83,6 +90,8 @@ func (p *PrtgData) Add(name, unit string, value interface{}, lim *LimitsStruct) 
 		pi.MaxErr = lim.MaxErr
 	}
 
+	pi.Lookup = lookup
+
 	p.items[name] = pi
 	return nil
 }
@@ -98,13 +107,8 @@ func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
 
 	s := prtgSensor.New()
 	if p.err != "" {
-		s.SetError(true)
-		s.SetSensorText(p.err)
-		js, err := s.MarshalToString()
-		if err != nil {
-			return fmt.Errorf("marshal to string %v", err)
-		}
-		fmt.Println(js)
+		SensorWarn(fmt.Errorf("%v", p.err), true)
+
 		return fmt.Errorf("error state %v", p.err)
 	}
 	keys := make([]string, 0, len(p.items))
@@ -117,6 +121,7 @@ func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
 		item := p.items[k]
 		c := s.AddChannel(k).SetValue(item.Value)
 		c.Unit = item.Unit
+		c.VolumeSize = item.volumeSize
 		if item.ErrMsg != "" {
 			c.LimitErrorMsg = fmt.Sprintf("%v", item.ErrMsg)
 			c.LimitMode = "1"
@@ -144,13 +149,22 @@ func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
 			c.LimitMaxWarning = fmt.Sprintf("%v", item.MaxWarn)
 			c.LimitMode = "1"
 		}
-		if inStringSlice(c.Unit, []string{"Byte"}) {
-			c.VolumeSize = "1"
+		//if inStringSlice(c.Unit, []string{"Byte"}) {
+		//	c.VolumeSize = "1"
+		//}
+		//if inStringSlice(c.Unit, []string{"Bit"}) {
+		//	c.SpeedSize = "1"
+		//}
+		c.ShowChart = "1"
+		c.ShowTable = "1"
+		if item.Hide {
+			c.ShowChart = "0"
+			c.ShowTable = "0"
 		}
-		if inStringSlice(c.Unit, []string{"Bit"}) {
-			c.SpeedSize = "1"
-		}
+		if item.Lookup != "" {
+			c.ValueLookup = item.Lookup
 
+		}
 	}
 
 	// Response time channel
@@ -174,4 +188,23 @@ func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
 	fmt.Printf("%+v\n", string(b))
 
 	return nil
+}
+
+func SensorWarn(inErr error, er bool) {
+	s := prtgSensor.New()
+	if er {
+		s.SetError(true)
+	} else {
+		s.SetError(false)
+		c := s.AddChannel("Execution time").SetValue(999).SetUnit(prtgSensor.TimeResponse)
+		c.Warning = "1"
+
+	}
+	s.SetSensorText(inErr.Error())
+	js, err := s.MarshalToString()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(js)
+
 }

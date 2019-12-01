@@ -52,7 +52,7 @@ var snapshotsCmd = &cobra.Command{
 
 		u, _ = u.Parse(urls)
 
-		Age, err := flags.GetDuration("Age")
+		Age, err := flags.GetDuration("snapAge")
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -64,7 +64,8 @@ var snapshotsCmd = &cobra.Command{
 
 		c, err := VMware.NewClient(u, user, pww)
 		if err != nil {
-			log.Fatal(err)
+			VMware.SensorWarn(fmt.Errorf("API connection error: %v", err), true)
+			return
 		}
 		f := property.Filter{}
 		name, err := flags.GetString("Name")
@@ -89,7 +90,8 @@ var snapshotsCmd = &cobra.Command{
 
 		err = c.SnapShotsOlderThan(f, tags, &lim, Age, js)
 		if err != nil {
-			fmt.Println(err)
+			VMware.SensorWarn(fmt.Errorf("get snapshots error: %v", err), true)
+
 		}
 
 	},
@@ -100,7 +102,7 @@ func init() {
 	snapshotsCmd.Flags().BoolP("json", "j", false, "pretty print json version of vmware data")
 	//summaryCmd.Flags().StringP("ptype", "t", "self", "managed object property type. eg self or name")
 	//summaryCmd.Flags().StringP("psearch", "U", "prtgUtil", "managed object property")
-	snapshotsCmd.Flags().DurationP("Age", "A", (7*24)*time.Hour, "ignore snapshots younger than")
+	snapshotsCmd.Flags().DurationP("snapAge", "A", (7*24)*time.Hour, "ignore snapshots younger than")
 
 	// Here you will define your flags and configuration settings.
 
