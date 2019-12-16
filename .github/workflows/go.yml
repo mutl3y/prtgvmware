@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     branches:
-      - v1
+      - v1.1
     tags:
       - Release
 jobs:
