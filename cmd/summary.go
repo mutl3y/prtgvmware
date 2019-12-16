@@ -1,26 +1,23 @@
 /*
-Copyright © 2019 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ * Copyright © 2019.  mutl3y
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package cmd
 
 import (
 	"fmt"
-	"net/url"
-	"time"
-
-	"github.com/mutl3y/PRTG_VMware/VMware"
+	"github.com/mutl3y/PRTG_VMware/app"
 	"github.com/spf13/cobra"
 )
 
@@ -28,65 +25,68 @@ import (
 var summaryCmd = &cobra.Command{
 	Use:   "summary",
 	Short: "vm summary for a single machine",
-	Long: `
+	Long: `queries vm performance metrics and outputs in PRTG format
+
+Can be further expanded by adding additional VmWare performance counters
+
+counters included by default are 
+"cpu.readiness.average", "cpu.usage.average",
+"datastore.datastoreNormalReadLatency.latest", "datastore.datastoreNormalWriteLatency.latest",
+"datastore.datastoreReadIops.latest", "datastore.datastoreWriteIops.latest",
+"disk.read.average", "disk.write.average", "disk.usage.average",
+"mem.active.average", "mem.consumed.average", "mem.usage.average",
+"net.bytesRx.average", "net.bytesTx.average", "net.usage.average",
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		flags := cmd.Flags()
-		u := &url.URL{}
-		urls, err := flags.GetString("url")
+		c, err := login(flags)
 		if err != nil {
-			fmt.Println(err)
+			app.SensorWarn(err, true)
+			return
 		}
-		user, err := flags.GetString("username")
+		defer c.Logout()
+		name, err := flags.GetString("name")
 		if err != nil {
-			fmt.Println(err)
+			app.SensorWarn(err, true)
+			return
 		}
-		pww, err := flags.GetString("password")
+		oid, err := flags.GetString("oid")
 		if err != nil {
-			fmt.Println(err)
+			app.SensorWarn(err, true)
+			return
 		}
 
-		u, _ = u.Parse(urls)
+		if name == "" && oid == "" {
+			app.SensorWarn(fmt.Errorf("you need to provide a name or managed object id"), true)
+			return
+		}
 
 		snapAge, err := flags.GetDuration("snapAge")
 		if err != nil {
-			fmt.Println(err)
-		}
-
-		js, err := flags.GetBool("json")
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		c, err := VMware.NewClient(u, user, pww)
-		if err != nil {
-			VMware.SensorWarn(fmt.Errorf("API connection error: %v", err), true)
-			return
-		}
-
-		name, err := flags.GetString("Name")
-		if err != nil {
-			VMware.SensorWarn(err, true)
-			return
-		}
-		moid, err := flags.GetString("Moid")
-		if err != nil {
-			VMware.SensorWarn(err, true)
+			app.SensorWarn(err, true)
 			return
 		}
 
 		lim, err := limitStruct(flags)
 		if err != nil {
-
-			VMware.SensorWarn(err, true)
+			app.SensorWarn(err, true)
 			return
 		}
 
-		extraSensors, err := flags.GetStringSlice("vmmetrics")
-
-		err = c.VmSummary(name, moid, &lim, snapAge, js, extraSensors)
+		extraSensors, err := flags.GetStringSlice("vmMetrics")
 		if err != nil {
-			VMware.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
+			app.SensorWarn(err, true)
+			return
+		}
+		js, err := flags.GetBool("json")
+		if err != nil {
+			app.SensorWarn(err, true)
+			return
+		}
+
+		err = c.VmSummary(name, oid, &lim, snapAge, js, extraSensors)
+		if err != nil {
+			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
 
 		}
 
@@ -95,8 +95,5 @@ var summaryCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(summaryCmd)
-	summaryCmd.Flags().BoolP("json", "j", false, "pretty print json version of vmware data")
-	summaryCmd.Flags().DurationP("snapAge", "P", (7*24)*time.Hour, "ignore snapshots younger than")
-	summaryCmd.Flags().StringSlice("vmmetrics", []string{}, "include additonal vm metrics, I.E. cpu.ready.summation")
-
+	summaryCmd.Flags().StringSlice("vmMetrics", []string{}, "include additional vm metrics, I.E. cpu.ready.summation")
 }

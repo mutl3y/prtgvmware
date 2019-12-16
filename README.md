@@ -62,5 +62,5 @@ To investigate this issue please:
 * choose Settings button
 * in the "SENSOR SETTINGS" section, item "EXE Result" mark "Write EXE result to disk"
 * let the sensor run (wait for the period of execution, "Scanning Interval" on the same screen)
-* collect all the files from `%programdata%\Paessler\PRTG Network Monitor\Logs (Sensors)`
-* review and please log issue you suspect code is at fault 
+* review the files from `%programdata%\Paessler\PRTG Network Monitor\Logs (Sensors)\` sensorid.*
+* review and please log issue if you suspect code is at fault 

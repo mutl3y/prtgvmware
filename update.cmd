@@ -1,0 +1,9 @@
+go get -u   -t github.com/PRTG/go-prtg-sensor-api
+go get -u   -t github.com/google/uuid
+go get -u   -t github.com/pkg/profile
+go get -u   -t github.com/russross/blackfriday
+go get -u   -t github.com/shurcooL/sanitized_anchor_name
+go get -u   -t github.com/spf13/cobra
+go get -u   -t github.com/spf13/pflag
+go get -u   -t github.com/vmware/govmomi
+go get -u   -t gopkg.in/yaml.v2

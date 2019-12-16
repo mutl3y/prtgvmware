@@ -19,5 +19,8 @@
 /.PRTG_VMware.yaml
 
 /prtgvmware.odt
-/VMware/prtgvmware2.odt
-/VMware/prtgvmware.odt
+/app/prtgvmware2.odt
+/app/prtgvmware.odt
+/cpuProfile
+/profiling/
+/lookups..txt

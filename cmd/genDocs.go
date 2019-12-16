@@ -1,18 +1,18 @@
 /*
-Copyright © 2019 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ * Copyright © 2019.  mutl3y
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package cmd
 
 import (
@@ -29,7 +29,7 @@ var genDocsCmd = &cobra.Command{
 	Short: "Create documentation for app",
 	Long: `Create documentation for app
 
-Supports Markdown, Rest and man page formats
+Supports Markdown, ReStructured Text Docs and man page formats
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		flags := cmd.Flags()
@@ -37,7 +37,7 @@ Supports Markdown, Rest and man page formats
 			Title: "prtg_client_util",
 		}
 
-		path, err := flags.GetString("Folder")
+		path, err := flags.GetString("folder")
 		if err != nil {
 			fmt.Printf("failed getting type %v", err)
 		}
@@ -51,7 +51,7 @@ Supports Markdown, Rest and man page formats
 
 		}
 
-		op, err := flags.GetString("Type")
+		op, err := flags.GetString("type")
 		if err != nil {
 			fmt.Printf("failed getting type %v", err)
 		}
@@ -67,28 +67,18 @@ Supports Markdown, Rest and man page formats
 			if err != nil {
 				log.Fatal(err)
 			}
-		case "markdown":
+		default:
 			err := doc.GenMarkdownTree(rootCmd, path)
 			if err != nil {
 				log.Fatal(err)
 			}
 		}
-
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(genDocsCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// genDocsCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	genDocsCmd.Flags().StringP("Type", "T", "markdown", "markdown,rest or man")
-	genDocsCmd.Flags().StringP("Folder", "f", "./docs", "folder to create docs in")
-	_ = genDocsCmd.MarkFlagDirname("Folder")
+	genDocsCmd.Flags().String("type", "markdown", "markdown,rest or man")
+	genDocsCmd.Flags().StringP("folder", "f", "./docs", "folder to create docs in")
+	_ = genDocsCmd.MarkFlagDirname("folder")
 }
