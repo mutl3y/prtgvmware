@@ -35,7 +35,6 @@ queries datastore summary metrics and outputs in PRTG format
 			app.SensorWarn(err, true)
 			return
 		}
-		defer c.Logout()
 		oid, err := flags.GetString("oid")
 		if err != nil {
 			app.SensorWarn(err, true)
@@ -65,7 +64,9 @@ queries datastore summary metrics and outputs in PRTG format
 			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
 
 		}
-
+		if !c.Cached {
+			c.Logout()
+		}
 	},
 }
 

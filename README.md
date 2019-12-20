@@ -7,6 +7,7 @@ Tested with PRTG Version 19.3.51.2722
   * [Download](#download)
   * [Copy files](#copy-files)
   * [Adding device](#adding-device)
+  * [Cached Credentials](#Cached Credentials)
   * [Investigating issues](#investigating-issues)
   * [XML: The returned xml does not match the expected schema. (code: PE233)](#xml-the-returned-xml-does-not-match-the-expected-schema-code-pe233)
 
@@ -29,12 +30,12 @@ if you do build this for yourself ensure you update govmomi separately to latest
 ## Generate documentation 
 ```prtgvmware.exe GenDoc```
 
-## Generate template
+## Generate tplate
 This is for auto discovery purposes, Please see /docs for further info or run command with -h for further details of what you can use here
 
 eg
 ```
-prtgvmware.exe template -type vm,ds --tags prtg --snapAge 7d
+prtgvmware.exe tplate--tags prtg --snapAge 7d
 ```
 
 ### Copy files
@@ -47,11 +48,15 @@ prtgvmware.exe template -type vm,ds --tags prtg --snapAge 7d
 * Enter device name (e.g. ```vcenter```)
 * In the "IPv4 Address/DNS Name of vcenter (without https://),
   e.g. `vcenter.local..net`
-* Choose "Automatic sensor creation using specific device template in ```"Sensor Management"```
-* Choose ``prtgvmware`` device template and deselect all others
+* Choose "Automatic sensor creation using specific device tplate in ```"Sensor Management"```
+* Choose ``prtgvmware`` device tplate and deselect all others
 * Change schedule to check ```hourly``` 
 * Enter VMware read only creds to windows user and password, leave domain empty I.E. ```administrator@vsphere.local```
 * Click ```"Continue"``` button 
+
+## Cached Credentials
+Users connection is cached to file by default, this is encrypted using the supplied password, 
+you can disable this behaviour causing the client to reconnect each time
 
 ## Investigating issues
 

@@ -25,6 +25,7 @@ import (
 )
 
 var timeout = 2 * time.Second
+var u, _ = url.Parse("https://192.168.0.201/sdk")
 
 //func TestClient_vmSummary(t *testing.T) {
 //	type args struct {
@@ -75,10 +76,6 @@ func TestClient_vmSummary(t *testing.T) {
 		usr, pw                string
 		txt                    bool
 	}
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
 
 	tests := []struct {
 		name    string
@@ -92,15 +89,15 @@ func TestClient_vmSummary(t *testing.T) {
 		////{"4", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
 		////{"5", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
 		//{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"6", u, args{"ad", "", "prtg@heynes.local", ".l3tm31n", true}, false},
-		{"5", u, args{"vcenter", "", "prtg@heynes.local", ".l3tm31n", true}, false},
+		{"6", u, args{"ad", "", "prtg@heynes.local", ".l3tm31n", false}, false},
+		{"5", u, args{"vcenter", "", "prtg@heynes.local", ".l3tm31n", false}, false},
 
 		//{"6", u, args{"tags", "windows", "ps@heynes.local", ".l3tm31n", true}, false},
 	}
 	//	debug = true
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw)
+			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw, true)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -326,10 +323,6 @@ func TestSnapShotsOlder(t *testing.T) {
 		tag                    []string
 		txt                    bool
 	}
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
 	tests := []struct {
 		name    string
 		ur      *url.URL
@@ -340,27 +333,29 @@ func TestSnapShotsOlder(t *testing.T) {
 		//{"2", &url.URL{}, args{"self", "vm-27", "", "", false}, false},
 		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
 		//{"4", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
-		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, true}, false},
+		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, false}, false},
 		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windowsx"}, false}, true},
 		//{"7", u, args{"tags", "windows", "ps@heynes.local", ".l3tm31n", true}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw)
+			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw, true)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
-			defer c.Logout()
 			f := property.Filter{tt.args.searchType: "*" + tt.args.searchItem}
 			lim := &LimitsStruct{}
 
-			err = c.SnapShotsOlderThan(f, tt.args.tag, lim, time.Second, true)
+			err = c.SnapShotsOlderThan(f, tt.args.tag, lim, time.Second, tt.args.txt)
 			if (err != nil) && !tt.wantErr {
 				t.Errorf("failed %v", err)
 			}
-
+			if !c.Cached {
+				_ = c.Logout()
+			}
 		})
+
 	}
 }
 
@@ -413,14 +408,11 @@ func TestClient_DsSummarys(t *testing.T) {
 		{"name", "raid5", "", false},
 		//{"moid", "", "datastore-10", false},
 	}
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
@@ -447,18 +439,15 @@ func TestClient_HostSummary(t *testing.T) {
 		//{"name", "192.168.0.194", "", false},
 		{"moid", "", "host-63", false},
 	}
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			c, err := NewClient(u, "testsave", ".l3tm31n", true)
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
+			//	c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n",false)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
-			defer c.Logout()
 			err = c.HostSummary(tt.na, tt.moid, &LimitsStruct{}, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("hostsummary() error = %v, wantErr %v", err, tt.wantErr)
@@ -475,33 +464,22 @@ func TestClient_Metrics(t *testing.T) {
 		wantErr bool
 	}{
 		//{"", types.ManagedObjectReference{Type:  "VirtualMachine",Value: "vm-16"}, false},
-		{"", types.ManagedObjectReference{Type: "HostSystem", Value: "host-12"}, false},
-		{"ds", types.ManagedObjectReference{Type: "Datastore", Value: "datastore-10"}, true},
-		{"vds", types.ManagedObjectReference{Type: "VmwareDistributedVirtualSwitch", Value: "dvs-19"}, true},
+		//{"", types.ManagedObjectReference{Type: "HostSystem", Value: "host-12"}, false},
+		//{"ds", types.ManagedObjectReference{Type: "Datastore", Value: "datastore-10"}, false},
+		{"vds", types.ManagedObjectReference{Type: "VmwareDistributedVirtualSwitch", Value: "dvs-19"}, false},
 	}
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
 			pr := NewPrtgData("testing")
-			defer c.Logout()
-			err = c.MetricS(tt.prop, pr, append(vmSummaryDefault, hsSummaryDefault...))
+			err = c.MetricS(tt.prop, pr, append(vmSummaryDefault, vdsSummaryDefault...), 20)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
-			}
-
-			for i := range []int{0, 0, 0, 0, 0} {
-				if i <= len(pr.items)-1 {
-					printJson(false, pr.items[i])
-				}
-
 			}
 
 		})
@@ -513,10 +491,6 @@ func TestClient_VdsSummary(t *testing.T) {
 		searchName, searchMoid string
 		usr, pw                string
 		txt                    bool
-	}
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
 	}
 
 	tests := []struct {
@@ -532,11 +506,11 @@ func TestClient_VdsSummary(t *testing.T) {
 		////{"5", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
 		//{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
 		{"6", u, args{"DSwitch", "", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"7", u, args{"", "dvs-19", "prtg@heynes.local", ".l3tm31n", true}, false},
+		{"7", u, args{"", "dvs-19", "prtg@heynes.local", ".l3tm31n", false}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
 			if err != nil {
 				t.Errorf("failed %v", err)
 			}

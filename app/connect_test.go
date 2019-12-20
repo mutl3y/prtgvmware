@@ -17,74 +17,56 @@
 package app
 
 import (
-	"context"
 	"net/url"
 	"testing"
-	"time"
 )
 
-func TestClient_Metascan(t *testing.T) {
+func TestClient_Save2Disk(t *testing.T) {
 	u, err := url.Parse("https://192.168.0.201/sdk")
 	if err != nil {
 		t.Fatalf("failed to parse url")
 	}
-
 	tests := []struct {
-		name string
-		tags []string
-
+		name    string
+		fn      string
 		wantErr bool
 	}{
-		{"", []string{"windows", "PRTG"}, false},
+		{"", "testsave", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			ctx, _ = context.WithTimeout(ctx, time.Second)
 			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
 			if err != nil {
-				t.Fatal("cant get client")
+				t.Fatalf("failed %v", err)
 			}
-
-			gotRtnMap := NewTagMap()
-			if err := c.Metascan(tt.tags, gotRtnMap, time.Minute); (err != nil) != tt.wantErr {
-				t.Errorf("Metascan() %v, wantErr %v", err, tt.wantErr)
-			}
-			err = c.Logout()
-			if err != nil {
-				t.Fatalf("%v", err)
+			//		defer c.Logout()  // if this isn't commented out then live tests wont work for TestNewClientFromDisk
+			if err := c.Save2Disk(tt.fn, ".l3tm31n"); (err != nil) != tt.wantErr {
+				t.Errorf("Save2Disk() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestClient_getObjType(t *testing.T) {
+func TestNewClientFromDisk(t *testing.T) {
 	u, err := url.Parse("https://192.168.0.201/sdk")
 	if err != nil {
 		t.Fatalf("failed to parse url")
 	}
-
 	tests := []struct {
-		name string
-		moid string
-
+		name    string
+		fn      string
 		wantErr bool
 	}{
-		{"ad", "vm-16", false},
+		{"", "testsave", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewClientFromDisk(tt.fn, ".l3tm31n", u)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewClientFromDisk() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
-			if err != nil {
-				t.Fatal("cant get client")
-			}
-			defer c.Logout()
-			moi := newMoidNames(&c)
-			na := moi.GetName(tt.moid)
-			if na == "" {
-				t.Fatalf("could not find %v", na)
-			}
 		})
 	}
 }

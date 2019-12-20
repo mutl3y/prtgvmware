@@ -1,19 +1,19 @@
-## PRTG_VMware template
+## PRTG_VMware tplate
 
-generate prtg template for autodiscovery
+generate prtg tplate for autodiscovery
 
 ### Synopsis
 
 use this to support autodiscovery using VMware tags
 
 ```
-PRTG_VMware template [flags]
+PRTG_VMware tplate [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for template
+  -h, --help   help for tplate
 ```
 
 ### Options inherited from parent commands

@@ -37,7 +37,6 @@ var metascanCmd = &cobra.Command{
 			app.SensorWarn(err, true)
 			return
 		}
-		defer c.Logout()
 		tags, err := flags.GetStringSlice("tags")
 		if err != nil {
 			app.SensorWarn(err, true)
@@ -55,6 +54,9 @@ var metascanCmd = &cobra.Command{
 		if err != nil {
 			app.SensorWarn(err, true)
 			return
+		}
+		if !c.Cached {
+			c.Logout()
 		}
 	},
 }

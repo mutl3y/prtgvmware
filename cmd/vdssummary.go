@@ -34,7 +34,6 @@ var vdssummaryCmd = &cobra.Command{
 			app.SensorWarn(err, true)
 			return
 		}
-		defer c.Logout()
 		oid, err := flags.GetString("oid")
 		if err != nil {
 			app.SensorWarn(err, true)
@@ -60,7 +59,9 @@ var vdssummaryCmd = &cobra.Command{
 			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
 
 		}
-
+		if !c.Cached {
+			c.Logout()
+		}
 	},
 }
 

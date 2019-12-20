@@ -44,7 +44,6 @@ counters included by default are
 			app.SensorWarn(err, true)
 			return
 		}
-		defer c.Logout()
 		name, err := flags.GetString("name")
 		if err != nil {
 			app.SensorWarn(err, true)
@@ -89,7 +88,9 @@ counters included by default are
 			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
 
 		}
-
+		//if !c.Cached {
+		//	c.Logout()
+		//}
 	},
 }
 

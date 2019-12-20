@@ -58,17 +58,17 @@ func (dev *Devicetemplate) add(cr Check) error {
 	dev.Create = append(dev.Create, cr)
 	return nil
 }
-func (dev *Devicetemplate) save() (err error) {
+func (dev *Devicetemplate) save(tplate string) (err error) {
 	ou, err := xml.MarshalIndent(dev, "", "  ")
 	if err != nil {
 		return
 	}
 
 	outStr := xml.Header + string(ou)
-	fmt.Printf("%v\n\nsaved to prtgvmware.odt\n", outStr)
+	fmt.Printf("%v\n\nsaved to %v.odt\n", outStr, tplate)
 	b := bytes.NewBufferString(outStr)
 
-	return ioutil.WriteFile("prtgvmware.odt", b.Bytes(), os.ModePerm)
+	return ioutil.WriteFile(tplate+".odt", b.Bytes(), os.ModePerm)
 }
 
 type Check struct {
@@ -164,21 +164,73 @@ func snapShotSensor(Age time.Duration, Tags string) Check {
 	return c
 }
 
-func GenTemplate(tags []string, Age time.Duration) error {
+func GenTemplate(tags []string, Age time.Duration, tplate string) error {
 	//fmt.Println(basetemplate)
 	creds := "-U https://%host/sdk -u %windowsuser -p %windowspassword"
 	d := NewDeviceTemplate(Age, strings.Join(tags, ","))
 
 	ch1 := fmt.Sprintf("metascan %v --snapAge %v --tags %v", creds, Age, strings.Join(tags, ","))
-	ch := NewCreate("", ch1, strings.Join(tags, ","), "300")
-	//ch.Createdata.Decimaldigits = "1"
+	ch := NewCreate("metascan", ch1, strings.Join(tags, ","), "300")
 	err := d.add(ch)
 	if err != nil {
 		return fmt.Errorf("failed to add check %v", err)
 	}
 
 	// save to disk
-	err = d.save()
+	err = d.save(tplate)
+	if err != nil {
+		return fmt.Errorf("failed to save file %v", err)
+	}
+
+	return nil
+}
+
+func (c *Client) DynTemplate(tags []string, Age time.Duration, tplate string) error {
+	//fmt.Println(basetemplate)
+	//	creds := "-U https://%host/sdk -u %windowsuser -p %windowspassword"
+	d := NewDeviceTemplate(Age, strings.Join(tags, ","))
+
+	//	ch1 := fmt.Sprintf("metascan %v --snapAge %v --tags %v", creds, Age, strings.Join(tags, ","))
+	//ch := NewCreate("metascan", ch1, strings.Join(tags, ","), "300")
+	//err := d.add(ch)
+	//if err != nil {
+	//	return fmt.Errorf("failed to add check %v", err)
+	//}
+
+	tm := NewTagMap()
+	err := c.list(tags, tm)
+	for _, tag := range tags {
+		err := c.GetObjIds(tag, tm)
+		if err != nil {
+			return fmt.Errorf("%v", err)
+		}
+	}
+	moidNames := newMoidNames(c)
+
+	meta, err := c.obMeta(tags, tm, moidNames, Age)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range meta.Items {
+		c := Check{
+			ID:       v.Name,
+			Kind:     "exexml",
+			Meta:     "",
+			Requires: "ping",
+			Createdata: Createdata{Name: v.Name, Tags: strings.Join(tags, ","), Errorintervalsdown: "5",
+				Autoacknowledge: "1", Priority: "3", Exefile: filepath.Base(os.Args[0]), Mutex: "prtgvmware",
+				Exeparams: v.Params,
+			},
+		}
+		err = d.add(c)
+		if err != nil {
+			return err
+		}
+	}
+
+	// save to disk
+	err = d.save(tplate)
 	if err != nil {
 		return fmt.Errorf("failed to save file %v", err)
 	}

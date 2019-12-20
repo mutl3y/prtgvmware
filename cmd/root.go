@@ -25,17 +25,15 @@ import (
 	"time"
 )
 
-var cfgFile = "PRTG_VMware.yml"
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "PRTG_VMware",
+	Use:   "prtgvmware",
 	Short: "VMware sensors for prtg",
 	Long: `advanced sensors for VMware
 
 this app exposes all the common stats for vm's, Hypervisors, Vcenter & Datastores'
 
-if you find I have missed one that's available via an api drop me a mail or register a request ion github
+to use autodiscovery you need to generate template using tags for each set of objects you want to monitor
 `,
 }
 
@@ -70,15 +68,16 @@ func init() {
 	rootCmd.PersistentFlags().String("msgWarn", "", "message to use if warning value exceeded (used with snapshots)")
 	rootCmd.PersistentFlags().String("msgError", "", "message to use if error value exceeded (used with snapshots)")
 	//rootCmd.PersistentFlags().Float64("MinWarn", 0, "")
-	rootCmd.PersistentFlags().Float64("maxWarn", 1, "greater than equal this will trigger a warning response (used with snapshots)")
 	//rootCmd.PersistentFlags().Float64("MinErr", 0, "")
+	rootCmd.PersistentFlags().Float64("maxWarn", 1, "greater than equal this will trigger a warning response (used with snapshots)")
 	rootCmd.PersistentFlags().Float64("maxErr", 0, "greater than equal this will trigger a error response (used with snapshots)")
+
 	rootCmd.PersistentFlags().StringP("name", "n", "", "name of vm, supports *partofname*")
 	rootCmd.PersistentFlags().StringP("oid", "i", "", "exact id of an object e.g. vm-12, vds-81, host-9, datastore-10 ")
 	rootCmd.PersistentFlags().StringSliceP("tags", "t", []string{}, "slice of tags to include")
 	rootCmd.PersistentFlags().DurationP("snapAge", "a", (7*24)*time.Hour, "ignore snapshots younger than")
-	//rootCmd.PersistentFlags().DurationP("timeout", "T", 2*time.Second, "login timeout")
 	rootCmd.PersistentFlags().BoolP("json", "j", false, "pretty print json version of vmware data")
+	rootCmd.PersistentFlags().BoolP("cachedCreds", "c", true, "disable cached connection")
 
 }
 
@@ -166,9 +165,12 @@ func login(flags *pflag.FlagSet) (c app.Client, err error) {
 		return
 	}
 
+	useCached, err := flags.GetBool("cachedCreds")
+	if err != nil {
+		return
+	}
 	u, _ = u.Parse(urls)
-
-	c, err = app.NewClient(u, user, pww)
+	c, err = app.NewClient(u, user, pww, useCached)
 	if err != nil {
 		return
 	}

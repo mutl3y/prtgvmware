@@ -25,7 +25,13 @@ import (
 var templateCmd = &cobra.Command{
 	Use:   "template",
 	Short: "generate prtg template for autodiscovery",
-	Long:  `use this to support autodiscovery using VMware tags`,
+	Long: `use this to support autodiscovery using VMware tags
+the limitations of this metadata scan option is that it will not add new items after first 
+discovery 
+
+if you wish to use this option you will need to delete all your sensors 
+from the device for the metascan to find anything new, in a very stable environment this can work
+`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		err := rootCmd.MarkPersistentFlagRequired("tags")
 		return err
@@ -41,7 +47,12 @@ var templateCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = app.GenTemplate(tags, snapAge)
+		tplate, err := flags.GetString("template")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = app.GenTemplate(tags, snapAge, tplate)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -51,5 +62,6 @@ var templateCmd = &cobra.Command{
 func init() {
 
 	rootCmd.AddCommand(templateCmd)
+	templateCmd.Flags().StringP("template", "f", "prtgvmware", "filename to save template as, adds .odt, only needed if using multiple sensors")
 
 }

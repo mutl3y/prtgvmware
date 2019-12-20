@@ -35,7 +35,6 @@ snapAge is 7 days by default`,
 			app.SensorWarn(err, true)
 			return
 		}
-		defer c.Logout()
 		f := property.Filter{}
 		name, err := flags.GetString("name")
 		if err != nil {
@@ -75,7 +74,9 @@ snapAge is 7 days by default`,
 			app.SensorWarn(fmt.Errorf("get snapshots error: %v", err), true)
 			return
 		}
-
+		if !c.Cached {
+			c.Logout()
+		}
 	},
 }
 

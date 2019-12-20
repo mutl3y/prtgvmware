@@ -40,7 +40,7 @@ func TestClient_tagList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
 			if err != nil {
 				t.Fatal("cant get client")
 			}
@@ -106,7 +106,7 @@ func Test_tagMap_check(t *testing.T) {
 		{"5", "vm-19", "PRTG", false, true},
 	}
 
-	c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
+	c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
 	if err != nil {
 		t.Fatal("cant get client")
 	}
@@ -144,7 +144,7 @@ func TestClient_GetVmsOnTags(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			timeout := context.Background()
 			timeout, _ = context.WithTimeout(timeout, time.Second)
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n")
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
 			if err != nil {
 				t.Fatal("cant get client")
 			}
@@ -154,5 +154,4 @@ func TestClient_GetVmsOnTags(t *testing.T) {
 			}
 		})
 	}
-	t.Logf("%+v", gotRtnMap)
 }

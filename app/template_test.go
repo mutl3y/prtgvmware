@@ -29,7 +29,29 @@ func TestGenTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := GenTemplate([]string{}, time.Second)
+
+			err := GenTemplate([]string{"prtg"}, time.Second, "deleteme")
+			if err != nil {
+				t.Fatalf("failed %v", err)
+			}
+		})
+	}
+}
+func TestClient_DynTemplate(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+			if err != nil {
+				t.Errorf("failed %v", err)
+			}
+			defer c.Logout()
+
+			err = c.DynTemplate([]string{"PRTG"}, time.Second, "deleteme")
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
