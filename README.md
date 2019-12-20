@@ -7,7 +7,7 @@ Tested with PRTG Version 19.3.51.2722
   * [Download](#download)
   * [Copy files](#copy-files)
   * [Adding device](#adding-device)
-  * [Cached Credentials](#Cached Credentials)
+  * [Cached Credentials](#cached-credentials)
   * [Investigating issues](#investigating-issues)
   * [XML: The returned xml does not match the expected schema. (code: PE233)](#xml-the-returned-xml-does-not-match-the-expected-schema-code-pe233)
 
