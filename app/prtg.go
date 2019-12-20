@@ -17,12 +17,10 @@
 package app
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	ps "github.com/PRTG/go-prtg-sensor-api"
 	"log"
-	"net/http"
 	"sort"
 	"sync"
 	"time"
@@ -89,52 +87,6 @@ func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
 		*sc = item
 	}
 
-	//	c.Unit = item.Unit
-	//	c.VolumeSize = item.volumeSize
-	//	if item.ErrMsg != "" {
-	//		c.LimitErrorMsg = fmt.Sprintf("%v", item.ErrMsg)
-	//		c.LimitMode = "1"
-	//	}
-	//	if item.WarnMsg != "" {
-	//		c.LimitWarningMsg = fmt.Sprintf("%v", item.WarnMsg)
-	//		c.LimitMode = "1"
-	//
-	//	}
-	//	if item.MinErr != 0 {
-	//		c.LimitMinError = fmt.Sprintf("%v", item.MinErr)
-	//		c.LimitMode = "1"
-	//
-	//	}
-	//	if item.MaxErr != 0 {
-	//		c.LimitMaxError = fmt.Sprintf("%v", item.MaxErr)
-	//		c.LimitMode = "1"
-	//	}
-	//	if item.MinWarn != 0 {
-	//		c.LimitMinWarning = fmt.Sprintf("%v", item.MinWarn)
-	//		c.LimitMode = "1"
-	//
-	//	}
-	//	if item.MaxWarn != 0 {
-	//		c.LimitMaxWarning = fmt.Sprintf("%v", item.MaxWarn)
-	//		c.LimitMode = "1"
-	//	}
-	//	//if inStringSlice(c.Unit, []string{"Byte"}) {
-	//	//	c.VolumeSize = "1"
-	//	//}
-	//	//if inStringSlice(c.Unit, []string{"Bit"}) {
-	//	//	c.SpeedSize = "1"
-	//	//}
-	//	c.ShowChart = "1"
-	//	c.ShowTable = "1"
-	//	if item.Hide {
-	//		c.ShowChart = "0"
-	//		c.ShowTable = "0"
-	//	}
-	//	if item.Lookup != "" {
-	//		c.ValueLookup = item.Lookup
-	//	}
-	//
-	//}
 	s.SetSensorText(p.text)
 	s.SetError(false)
 
@@ -178,33 +130,4 @@ func SensorWarn(inErr error, er bool) {
 	}
 	fmt.Println(js)
 
-}
-
-func PostComment(sensorId, comment string) error {
-	//tr := http.DefaultTransport.(*http.Transport)
-	//tr.TLSClientConfig = &tls.Config{}
-	//tr.TLSClientConfig.InsecureSkipVerify = true
-
-	//client := http.Client{
-	//	Transport:     tr,
-	//	CheckRedirect: nil,
-	//	Jar:           nil,
-	//	Timeout:       20,
-	//}
-	//req := newhttp
-
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	_, err := http.Get("https://golang.org/")
-	if err != nil {
-		fmt.Println(err)
-	}
-	userCreds := `&username=vmsummary&passhash=2812313609`
-
-	resp, err := http.Post(`http://192.168.0.4/api/acknowledgealarm.htm?id=2437&ackmsg=Ticket%20Created%20-%20123456`+userCreds, "application/json", nil)
-	if err != nil {
-		printJson(false, "https://192.168.0.4/api/setobjectproperty.htm?id=2437&name=mutex&value=192.168.59.2"+userCreds)
-		return err
-	}
-	fmt.Println(resp)
-	return nil
 }

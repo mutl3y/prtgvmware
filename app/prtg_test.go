@@ -23,30 +23,6 @@ import (
 	"time"
 )
 
-func TestPostComment(t *testing.T) {
-	type args struct {
-		sensorId string
-		comment  string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{"", args{
-			sensorId: "2437",
-			comment:  "findme",
-		}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := PostComment(tt.args.sensorId, tt.args.comment); (err != nil) != tt.wantErr {
-				t.Errorf("PostComment() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestPrtgData2_Print2(t *testing.T) {
 	i := ps.SensorChannel{
 		Channel:         "a test channel",

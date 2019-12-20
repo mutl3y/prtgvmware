@@ -48,8 +48,8 @@ func Encrypt(data []byte, passphrase string) ([]byte, error) {
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		return []byte{}, err
 	}
-	ciphertext := gcm.Seal(nonce, nonce, data, nil)
-	return ciphertext, nil
+	ciphered := gcm.Seal(nonce, nonce, data, nil)
+	return ciphered, nil
 }
 
 // Decrypt decrypts data using the passphrase.
@@ -64,8 +64,8 @@ func Decrypt(data []byte, passphrase string) ([]byte, error) {
 		return []byte{}, err
 	}
 	nonceSize := gcm.NonceSize()
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	nonce, ciphered := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphered, nil)
 	if err != nil {
 		return []byte{}, err
 	}

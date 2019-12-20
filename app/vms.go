@@ -28,7 +28,6 @@ import (
 	"github.com/vmware/govmomi/vim25/types"
 	"log"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -76,39 +75,39 @@ func (c *Client) findOne(name, vmwareType string) (moid types.ManagedObjectRefer
 
 	switch vmwareType {
 	case "HostSystem":
-		ol := []mo.HostSystem{}
+		ol := mo.HostSystem{}
 		err = v.RetrieveWithFilter(ctx, []string{"HostSystem"}, []string{"name"}, &ol, property.Filter{"name": name})
 		if err != nil {
 			err = fmt.Errorf("failed to find %v %v %v", name, vmwareType, err)
 			return
 		}
-		moid = ol[0].Reference()
+		moid = ol.Reference()
 
 	case "VirtualMachine":
-		ol := []mo.VirtualMachine{}
+		ol := mo.VirtualMachine{}
 		err = v.RetrieveWithFilter(ctx, []string{"VirtualMachine"}, []string{"name"}, &ol, property.Filter{"name": name})
 		if err != nil {
 			err = fmt.Errorf("failed to find %v %v %v", name, vmwareType, err)
 			return
 		}
-		moid = ol[0].Reference()
+		moid = ol.Reference()
 	case "Datastore":
-		ol := []mo.Datastore{}
+		ol := mo.Datastore{}
 		err = v.RetrieveWithFilter(ctx, []string{"Datastore"}, []string{"name"}, &ol, property.Filter{"name": name})
 		if err != nil {
 			err = fmt.Errorf("failed to find %v %v %v", name, vmwareType, err)
 			return
 		}
-		moid = ol[0].Reference()
+		moid = ol.Reference()
 
 	case "VmwareDistributedVirtualSwitch":
-		ol := []mo.VmwareDistributedVirtualSwitch{}
+		ol := mo.VmwareDistributedVirtualSwitch{}
 		err = v.RetrieveWithFilter(ctx, []string{"VmwareDistributedVirtualSwitch"}, []string{"name"}, &ol, property.Filter{"name": name})
 		if err != nil {
 			err = fmt.Errorf("failed to find %v %v %v", name, vmwareType, err)
 			return
 		}
-		moid = ol[0].Reference()
+		moid = ol.Reference()
 
 	default:
 		fmt.Println("findOne() unsupported type")
@@ -136,7 +135,7 @@ func (c *Client) VmSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	//	kind := []string{"VirtualMachine"}
 	//vms := make([]mo.VirtualMachine, 0, 100)
 	id := types.ManagedObjectReference{
-		"VirtualMachine", moid,
+		Type: "VirtualMachine", Value: moid,
 	}
 
 	v0 := mo.VirtualMachine{}
@@ -267,13 +266,6 @@ func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *Lim
 		return err
 	}
 
-	if (err != nil) && !strings.Contains(err.Error(), "404") {
-		if err != nil {
-			return fmt.Errorf("404 issue %v", err)
-		}
-
-	}
-
 	respTime := time.Since(start)
 
 	b := time.Now().Add(-age)
@@ -371,7 +363,7 @@ func (c *Client) DsSummary(name, moid string, lim *LimitsStruct, js bool) (err e
 }
 
 //VdsSummary
-func (c *Client) VdsSummary(name, moid string, lim *LimitsStruct, js bool) (err error) {
+func (c *Client) VdsSummary(name, moid string, js bool) (err error) {
 	start := time.Now()
 
 	ctx := context.Background()
@@ -400,8 +392,8 @@ func (c *Client) VdsSummary(name, moid string, lim *LimitsStruct, js bool) (err 
 	vd := vds
 	pr := NewPrtgData("VdsSummary")
 
-	pr.Add(tfl(vd.OverallStatus), ps.SensorChannel{Channel: "Overall Status", Unit: "Custom", CustomUnit: "Custom", ValueLookup: "prtg.standardlookups.Google.Gsa.Health"})
-	pr.Add(tfl(vd.ConfigStatus), ps.SensorChannel{Channel: "Config Status", Unit: "Custom", CustomUnit: "Custom", ValueLookup: "prtg.standardlookups.Google.Gsa.Health"})
+	_ = pr.Add(tfl(vd.OverallStatus), ps.SensorChannel{Channel: "Overall Status", Unit: "Custom", CustomUnit: "Custom", ValueLookup: "prtg.standardlookups.Google.Gsa.Health"})
+	_ = pr.Add(tfl(vd.ConfigStatus), ps.SensorChannel{Channel: "Config Status", Unit: "Custom", CustomUnit: "Custom", ValueLookup: "prtg.standardlookups.Google.Gsa.Health"})
 
 	for _, pg := range vd.Portgroup {
 		vpg := mo.DistributedVirtualPortgroup{}
@@ -409,7 +401,7 @@ func (c *Client) VdsSummary(name, moid string, lim *LimitsStruct, js bool) (err 
 		if err != nil {
 			return fmt.Errorf("hs properties %v", err)
 		}
-		pr.Add(tfl(vpg.OverallStatus), ps.SensorChannel{Channel: vpg.Name, Unit: "Custom", CustomUnit: "Custom", ValueLookup: "prtg.standardlookups.Google.Gsa.Health"})
+		_ = pr.Add(tfl(vpg.OverallStatus), ps.SensorChannel{Channel: vpg.Name, Unit: "Custom", CustomUnit: "Custom", ValueLookup: "prtg.standardlookups.Google.Gsa.Health"})
 	}
 	err = c.MetricS(vd.Reference(), pr, vdsSummaryDefault, 20)
 	if err != nil {
@@ -420,7 +412,7 @@ func (c *Client) VdsSummary(name, moid string, lim *LimitsStruct, js bool) (err 
 }
 
 //HostSummary
-func (c *Client) HostSummary(name, moid string, lim *LimitsStruct, js bool) (err error) {
+func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	start := time.Now()
 
 	ctx := context.Background()
@@ -454,11 +446,11 @@ func (c *Client) HostSummary(name, moid string, lim *LimitsStruct, js bool) (err
 		_ = pr.Add(0, ps1)
 	case "poweredOff", "standby":
 		_ = pr.Add(1, ps1)
-		pr.Print(time.Since(start), false)
+		_ = pr.Print(time.Since(start), false)
 		return
 	case "unknown":
 		_ = pr.Add(2, ps1)
-		pr.Print(time.Since(start), false)
+		_ = pr.Print(time.Since(start), false)
 		return
 	default:
 		printJson(false, hs.Runtime.PowerState)
@@ -470,15 +462,14 @@ func (c *Client) HostSummary(name, moid string, lim *LimitsStruct, js bool) (err
 	}
 	elapsed := time.Since(start)
 
-	freeMemory := int64(hs.Summary.Hardware.MemorySize) - (int64(hs.Summary.QuickStats.OverallMemoryUsage) * 1024 * 1024)
-	freeMemoryp := freeMemory / (int64(hs.Summary.Hardware.MemorySize) / 100)
-	//
-	//err = pr.Add(memUsed, ps.SensorChannel{Channel: "Memory Total", Unit: "BytesMemory"})
+	freeMemory := hs.Summary.Hardware.MemorySize - (int64(hs.Summary.QuickStats.OverallMemoryUsage) * 1024 * 1024)
+	freeMemoryp := freeMemory / (hs.Summary.Hardware.MemorySize / 100)
+
 	_ = pr.Add(freeMemory, ps.SensorChannel{Channel: "Memory Free", Unit: "BytesMemory"})
 	_ = pr.Add(freeMemoryp, ps.SensorChannel{Channel: "Memory Free (Percent)", Unit: "Percent", DecimalMode: "1"})
 
 	totalCPU := int64(hs.Summary.Hardware.CpuMhz) * int64(hs.Summary.Hardware.NumCpuCores)
-	freeCPU := int64(totalCPU) - int64(hs.Summary.QuickStats.OverallCpuUsage)
+	freeCPU := totalCPU - int64(hs.Summary.QuickStats.OverallCpuUsage)
 	usedCPUP := int64(hs.Summary.QuickStats.OverallCpuUsage) / (totalCPU / 100)
 	freeCPUP := freeCPU / (totalCPU / 100)
 	_ = pr.Add(freeCPUP, ps.SensorChannel{Channel: "CPU Free", Unit: "Percent", DecimalMode: "1"})
@@ -490,9 +481,6 @@ func (c *Client) HostSummary(name, moid string, lim *LimitsStruct, js bool) (err
 
 	_ = pr.Add(boolToInt(hs.Runtime.InMaintenanceMode), ps.SensorChannel{Channel: "Maintenance Mode", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok"})
 	_ = pr.Add(triggeredAlarms(hs.TriggeredAlarmState), ps.SensorChannel{Channel: "Triggered Alarms", Unit: "Count", LimitMaxWarning: "1", LimitWarningMsg: "triggered alarms present"})
-	if err != nil {
-		return err
-	}
 	_ = pr.Print(elapsed, js)
 	return
 }
@@ -501,7 +489,7 @@ func (c *Client) HostSummary(name, moid string, lim *LimitsStruct, js bool) (err
 func (c *Client) MetricS(mor types.ManagedObjectReference, pr *PrtgData, str []string, interval int32) (err error) {
 	// get object quickstats
 	if c.m == nil {
-		return fmt.Errorf("Metrics() no client")
+		return fmt.Errorf("metrics() no client")
 	}
 	ctx := context.Background()
 	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{mor.Type}, true)
@@ -648,6 +636,7 @@ func unitType(s string) string {
 }
 
 func VmMetType(u, s string) (unit, size, customUnit string) {
+	//noinspection GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst,GoUnusedConst
 	const (
 		BytesBandwidth string = "BytesBandwidth"
 		BytesDisk      string = "BytesDisk"
@@ -765,55 +754,6 @@ func snapshotCount(before time.Time, snp []types.VirtualMachineSnapshotTree) (in
 	return co, nil
 }
 
-func singleStat(stat interface{}) (interface{}, error) {
-	var rtnStat interface{}
-	switch t := stat.(type) {
-	case float32, float64, int8, uint8, int16, uint16, int32, uint32, uint64, int64, uint, int, bool:
-		if stat == "" {
-			return nil, nil
-		}
-
-		rtnStat = stat
-	case string:
-		if stat == "" {
-			return nil, nil
-		}
-		fl, err := strconv.ParseFloat(stat.(string), 64)
-		if err != nil {
-			fmt.Println("cant parse this ************************************************************")
-			return nil, err
-		}
-		fl = float64(int(fl*100) / 100)
-		rtnStat = fl
-	case []float64:
-		st := stat.([]float64)
-		fl := float64(int(st[0]*100) / 100)
-		rtnStat = fl
-	case []int64:
-		st := stat.([]int64)
-		rtnStat = st[0]
-	case nil:
-		rtnStat = nil
-	default:
-		return nil, fmt.Errorf("type of %v %T is not supported for \n %v\n", t, stat, stat)
-	}
-
-	return rtnStat, nil
-}
-
-func singleStat2(stat string) (string, error) {
-	if stat == "" {
-		return "", nil
-	}
-	fl, err := strconv.ParseFloat(stat, 64)
-	if err != nil {
-		return "", fmt.Errorf("cant parse this  %v", err)
-	}
-	fl = float64(int(fl*100) / 100)
-	rtnStat := fmt.Sprintf("%v", fl)
-	return rtnStat, nil
-}
-
 func printJson(txt bool, i ...interface{}) {
 	for _, v := range i {
 		b, err := json.MarshalIndent(v, "", "    ")
@@ -838,15 +778,15 @@ func inStringSlice(str string, strSlice []string) bool {
 	return false
 }
 
-func tagCheck(n string, t []string) (found bool) {
-	for _, check := range t {
-		if n == check {
-			return true
-		}
-	}
-
-	return
-}
+//func tagCheck(n string, t []string) (found bool) {
+//	for _, check := range t {
+//		if n == check {
+//			return true
+//		}
+//	}
+//
+//	return
+//}
 
 func triggeredAlarms(s []types.AlarmState) (rntInt int) {
 	if s != nil {
@@ -868,7 +808,7 @@ func tfl(ic interface{}) int {
 	switch c {
 	case "green":
 
-	case "yelllow":
+	case "yellow":
 		i = 1
 	case "red":
 		i = 2

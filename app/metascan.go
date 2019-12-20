@@ -111,7 +111,7 @@ func (c *Client) Metascan(tags []string, tm *TagMap, Age time.Duration) (err err
 	}
 	moidNames := newMoidNames(c)
 
-	meta, err := c.obMeta(tags, tm, moidNames, Age)
+	meta, err := c.obMeta(tm, moidNames, Age)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func (c *Client) Metascan(tags []string, tm *TagMap, Age time.Duration) (err err
 	return
 }
 
-func (c *Client) obMeta(tags []string, tm *TagMap, moidMap *moidNames, Age time.Duration) (meta prtg, err error) {
+func (c *Client) obMeta(tm *TagMap, moidMap *moidNames, Age time.Duration) (meta prtg, err error) {
 
 	meta = prtg{}
 	meta.Items = make([]Item, 0, 10)

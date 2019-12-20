@@ -23,7 +23,7 @@ import (
 // metascanCmd represents the metascan command
 var metascanCmd = &cobra.Command{
 	Use:   "metascan",
-	Short: "returns sensors for vmware vcenter instances by name or tag",
+	Short: "returns prtg sensors for autodiscovery",
 	Long:  `used for autodiscovery of vmware sensors`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		err := rootCmd.MarkPersistentFlagRequired("tags")
@@ -56,7 +56,7 @@ var metascanCmd = &cobra.Command{
 			return
 		}
 		if !c.Cached {
-			c.Logout()
+			_ = c.Logout()
 		}
 	},
 }

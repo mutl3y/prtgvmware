@@ -1,4 +1,4 @@
-// +build
+// +build test
 
 /*
  * Copyright © 2019.  mutl3y

@@ -30,12 +30,21 @@ if you do build this for yourself ensure you update govmomi separately to latest
 ## Generate documentation 
 ```prtgvmware.exe GenDoc```
 
-## Generate tplate
+## Generate Template
 This is for auto discovery purposes, Please see /docs for further info or run command with -h for further details of what you can use here
 
 eg
 ```
-prtgvmware.exe tplate--tags prtg --snapAge 7d
+prtgvmware.exe template--tags prtg --snapAge 7d
+```
+
+## Generate dynamic templates
+This is for auto discovery purposes also, 
+
+this gets round the way prtg metascan works and allows subsequent scans to add newly found items
+eg
+```
+prtgvmware.exe dynamicTemplates --tags prtg --snapAge 7d
 ```
 
 ### Copy files

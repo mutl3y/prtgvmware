@@ -23,7 +23,7 @@ import (
 
 // dssummaryCmd represents the dssummary command
 var dssummaryCmd = &cobra.Command{
-	Use:   "dssummary",
+	Use:   "dsSummary",
 	Short: "summary for a single datastore",
 	Long: `
 queries datastore summary metrics and outputs in PRTG format
@@ -65,7 +65,7 @@ queries datastore summary metrics and outputs in PRTG format
 
 		}
 		if !c.Cached {
-			c.Logout()
+			_ = c.Logout()
 		}
 	},
 }

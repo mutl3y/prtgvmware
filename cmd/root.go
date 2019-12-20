@@ -25,13 +25,13 @@ import (
 	"time"
 )
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd represents the base command when called without any sub-commands
 var rootCmd = &cobra.Command{
 	Use:   "prtgvmware",
 	Short: "VMware sensors for prtg",
 	Long: `advanced sensors for VMware
 
-this app exposes all the common stats for vm's, Hypervisors, Vcenter & Datastores'
+this app exposes all the common stats for vm's, Hypervisor's, VDS & Datastore's
 
 to use autodiscovery you need to generate template using tags for each set of objects you want to monitor
 `,
@@ -45,16 +45,7 @@ func Execute() {
 		log.Fatal(err)
 
 	}
-	//save, err := rootCmd.Flags().GetBool("saveconfig")
-	//if err != nil {
-	//	log.Fatalf("failed saving config %v", err)
-	//}
-	//if save {
-	//	fmt.Println("writing config file")
-	//	if err := viper.WriteConfigAs(cfgFile); err != nil {
-	//		fmt.Println(err)
-	//	}
-	//}
+
 }
 
 func init() {
@@ -109,8 +100,12 @@ func init() {
 //}
 
 var (
-	WarnMsg, ErrMsg                  string
-	MinWarn, MaxWarn, MinErr, MaxErr float64
+	WarnMsg string
+	ErrMsg  string
+	MinWarn float64
+	MaxWarn float64
+	MinErr  float64
+	MaxErr  float64
 )
 
 func limitStruct(flags *pflag.FlagSet) (lim app.LimitsStruct, err error) {

@@ -32,19 +32,18 @@ func TestClient_tagList(t *testing.T) {
 	tests := []struct {
 		name       string
 		tagIds     []string
-		wantRtnMap map[string]obJdata
+		wantRtnMap map[string]objData
 		wantErr    bool
 	}{
-		{"1", []string{"windows"}, map[string]obJdata{"vm-15": {[]string{"windows"}, "vm-16", "VirtualMachine"}}, false},
+		{"1", []string{"windows"}, map[string]objData{"vm-15": {[]string{"windows"}, "vm-16", "VirtualMachine"}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
 			if err != nil {
 				t.Fatal("cant get client")
 			}
-			defer c.Logout()
 			gotRtnMap := NewTagMap()
 			err = c.list(tt.tagIds, gotRtnMap)
 			if (err != nil) != tt.wantErr {
@@ -106,11 +105,11 @@ func Test_tagMap_check(t *testing.T) {
 		{"5", "vm-19", "PRTG", false, true},
 	}
 
-	c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+	c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
 	if err != nil {
 		t.Fatal("cant get client")
 	}
-	defer c.Logout()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ttagMap := NewTagMap()
@@ -144,11 +143,10 @@ func TestClient_GetVmsOnTags(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			timeout := context.Background()
 			timeout, _ = context.WithTimeout(timeout, time.Second)
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
 			if err != nil {
 				t.Fatal("cant get client")
 			}
-			defer c.Logout()
 			if err := c.GetObjIds(tt.tag, gotRtnMap); (err != nil) != tt.wantErr {
 				t.Errorf("GetVmsOnTags() error = %v, wantErr %v", err, tt.wantErr)
 			}

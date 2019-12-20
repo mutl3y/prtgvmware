@@ -24,14 +24,11 @@ import (
 
 // hssummaryCmd represents the hssummary command
 var hssummaryCmd = &cobra.Command{
-	Use:   "hssummary",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:   "hsSummary",
+	Short: "summary for a single host",
+	Long: `
+queries host summary & metrics and outputs in PRTG format
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 		flags := cmd.Flags()
 		c, err := login(flags)
@@ -45,11 +42,6 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		lim, err := limitStruct(flags)
-		if err != nil {
-			app.SensorWarn(err, true)
-			return
-		}
 		name, err := flags.GetString("name")
 		if err != nil {
 			app.SensorWarn(err, true)
@@ -63,13 +55,13 @@ to quickly create a Cobra application.`,
 			app.SensorWarn(err, true)
 			return
 		}
-		err = c.HostSummary(name, oid, &lim, js)
+		err = c.HostSummary(name, oid, js)
 		if err != nil {
 			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
 
 		}
 		if !c.Cached {
-			c.Logout()
+			_ = c.Logout()
 		}
 	},
 }

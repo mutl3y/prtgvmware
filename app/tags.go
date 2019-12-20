@@ -27,20 +27,20 @@ import (
 	"time"
 )
 
-type obJdata struct {
+type objData struct {
 	Tags    []string
 	Name    string
 	RefType string
 }
 
 type TagMap struct {
-	Data map[string]obJdata
+	Data map[string]objData
 	mu   *sync.RWMutex
 }
 
 func NewTagMap() *TagMap {
 	rtn := TagMap{}
-	rtn.Data = make(map[string]obJdata, 0)
+	rtn.Data = make(map[string]objData, 0)
 	rtn.mu = &sync.RWMutex{}
 	return &rtn
 }
@@ -52,7 +52,7 @@ func (t *TagMap) add(mo mo.Reference, tag string) {
 
 	obj, ok := t.Data[id]
 	if !ok {
-		obj := obJdata{}
+		obj := objData{}
 		obj.Tags = make([]string, 0, 10)
 	}
 	obj.RefType = mo.Reference().Type
@@ -172,7 +172,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		if err != nil {
 			return nil, err
 		}
-		x := []types.ManagedObjectReference{}
+		x := make([]types.ManagedObjectReference, 0, 3)
 
 		x = append(x, wd.HostFolder, wd.DatastoreFolder, wd.NetworkFolder)
 		for _, v := range x {

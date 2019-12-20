@@ -75,11 +75,11 @@ func TestClient_getObjType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
 			if err != nil {
 				t.Fatal("cant get client")
 			}
-			defer c.Logout()
+
 			moi := newMoidNames(&c)
 			na := moi.GetName(tt.moid)
 			if na == "" {

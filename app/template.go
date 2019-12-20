@@ -186,16 +186,7 @@ func GenTemplate(tags []string, Age time.Duration, tplate string) error {
 }
 
 func (c *Client) DynTemplate(tags []string, Age time.Duration, tplate string) error {
-	//fmt.Println(basetemplate)
-	//	creds := "-U https://%host/sdk -u %windowsuser -p %windowspassword"
 	d := NewDeviceTemplate(Age, strings.Join(tags, ","))
-
-	//	ch1 := fmt.Sprintf("metascan %v --snapAge %v --tags %v", creds, Age, strings.Join(tags, ","))
-	//ch := NewCreate("metascan", ch1, strings.Join(tags, ","), "300")
-	//err := d.add(ch)
-	//if err != nil {
-	//	return fmt.Errorf("failed to add check %v", err)
-	//}
 
 	tm := NewTagMap()
 	err := c.list(tags, tm)
@@ -207,7 +198,7 @@ func (c *Client) DynTemplate(tags []string, Age time.Duration, tplate string) er
 	}
 	moidNames := newMoidNames(c)
 
-	meta, err := c.obMeta(tags, tm, moidNames, Age)
+	meta, err := c.obMeta(tm, moidNames, Age)
 	if err != nil {
 		return err
 	}

@@ -75,7 +75,7 @@ snapAge is 7 days by default`,
 			return
 		}
 		if !c.Cached {
-			c.Logout()
+			_ = c.Logout()
 		}
 	},
 }

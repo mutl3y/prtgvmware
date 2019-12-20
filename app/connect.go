@@ -34,31 +34,6 @@ import (
 	"strings"
 )
 
-//// getEnvString returns string from environment variable.
-//func getEnvString(v string, def string) string {
-//	r := os.Getenv(v)
-//	if r == "" {
-//		return def
-//	}
-//
-//	return r
-//}
-//
-//// getEnvBool returns boolean from environment variable.
-//func getEnvBool(v string, def bool) bool {
-//	r := os.Getenv(v)
-//	if r == "" {
-//		return def
-//	}
-//
-//	switch strings.ToLower(r[0:1]) {
-//	case "t", "y", "1":
-//		return true
-//	}
-//
-//	return false
-//}
-
 var pathSep = string(os.PathSeparator)
 
 type Client struct {

@@ -22,9 +22,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// vdssummaryCmd represents the vdssummary command
-var vdssummaryCmd = &cobra.Command{
-	Use:   "vdssummary",
+var vdsSummaryCmd = &cobra.Command{
+	Use:   "vdsSummary",
 	Short: "vds summary for prtg",
 	Long:  `Provides basic vds status for PRTG monitoring`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -40,11 +39,6 @@ var vdssummaryCmd = &cobra.Command{
 			return
 		}
 
-		lim, err := limitStruct(flags)
-		if err != nil {
-			app.SensorWarn(err, true)
-			return
-		}
 		name, err := flags.GetString("name")
 		if err != nil {
 			app.SensorWarn(err, true)
@@ -54,17 +48,17 @@ var vdssummaryCmd = &cobra.Command{
 			app.SensorWarn(err, true)
 			return
 		}
-		err = c.VdsSummary(name, oid, &lim, js)
+		err = c.VdsSummary(name, oid, js)
 		if err != nil {
 			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
 
 		}
 		if !c.Cached {
-			c.Logout()
+			_ = c.Logout()
 		}
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(vdssummaryCmd)
+	rootCmd.AddCommand(vdsSummaryCmd)
 }

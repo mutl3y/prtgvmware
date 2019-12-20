@@ -23,17 +23,11 @@ import (
 // dynamicTemplatesCmd represents the dynamicTemplates command
 var dynamicTemplatesCmd = &cobra.Command{
 	Use:   "dynamicTemplates",
-	Short: "A brief description of your command",
+	Short: "generate prtg template for autodiscovery",
 	Long: `use this to support autodiscovery using VMware tags
 
-this is to get around the limitations of the metadata scan option not adding new items after first 
-discovery as it will not trigger the PRTG sensor tracking code
-
-this should be run regularly and the file that is created should be copied to the 
-device templates folder so its picked up by autodiscovery on next invocation
-
-if you prefer the metascan option you will need to delete all your sensors 
-from the device for the metascan to find anything new`,
+run this regually via cron or task scheduler and copy template to devicetemplates folder for use by autodiscovery
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		flags := cmd.Flags()

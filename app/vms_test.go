@@ -24,7 +24,6 @@ import (
 	"time"
 )
 
-var timeout = 2 * time.Second
 var u, _ = url.Parse("https://192.168.0.201/sdk")
 
 //func TestClient_vmSummary(t *testing.T) {
@@ -416,13 +415,14 @@ func TestClient_DsSummarys(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
-			defer c.Logout()
 			err = c.DsSummary(tt.na, tt.moid, &LimitsStruct{}, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DsMetrics() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
+			if !c.Cached {
+				_ = c.Logout()
+			}
 		})
 	}
 }
@@ -448,7 +448,7 @@ func TestClient_HostSummary(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
-			err = c.HostSummary(tt.na, tt.moid, &LimitsStruct{}, false)
+			err = c.HostSummary(tt.na, tt.moid, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("hostsummary() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -514,10 +514,9 @@ func TestClient_VdsSummary(t *testing.T) {
 			if err != nil {
 				t.Errorf("failed %v", err)
 			}
-			defer c.Logout()
 			pr := NewPrtgData("testing")
 
-			err = c.VdsSummary(tt.args.searchName, tt.args.searchMoid, &LimitsStruct{}, tt.args.txt)
+			err = c.VdsSummary(tt.args.searchName, tt.args.searchMoid, tt.args.txt)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -528,7 +527,9 @@ func TestClient_VdsSummary(t *testing.T) {
 				}
 
 			}
-
+			if !c.Cached {
+				_ = c.Logout()
+			}
 		})
 	}
 }
