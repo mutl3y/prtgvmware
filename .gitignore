@@ -1,11 +1,12 @@
 # Created by .ignore support plugin (hsz.mobi)
-### Go template
+### Go tplate
 # Binaries for programs and plugins
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+*.odt
 
 # Test binary, built with `go test -c`
 *.test
@@ -18,3 +19,6 @@
 .idea/
 /.PRTG_VMware.yaml
 
+/cpuProfile
+/profiling/
+/lookups.txt

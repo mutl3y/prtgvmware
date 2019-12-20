@@ -1,0 +1,1 @@
+go run . %1 -U https://192.168.0.201/sdk -p .l3tm31n -u prtg@heynes.local -t PRTG %2 %3 %4 %5 %6
