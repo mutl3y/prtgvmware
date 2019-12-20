@@ -17,10 +17,12 @@ Tested with PRTG Version 19.3.51.2722
 To install this prtg VMware sensor plugin you need to download the following
 from the [releases](https://github.com/mutl3y/PRTG_VMware) section:
 * plugin binary (choose correct binary according to your architecture) 
-can be run remotely, place on remote host in standard vmware script location
+can be run remotely on a linux box, 
+place on remote host in standard vmware script location
 on linux this is /var/prtg/scriptsxml/ and make the file executable via the user you intend to run it as 
 remembering to enter, linux user creds in for remote host
 
+for windows place in the customsensosrs\exexml folder
 **Make sure to download files from the latest release.**
 
 ## Actions
