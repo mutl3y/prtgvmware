@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     branches:
-      - v0.15
+      - master
     tags:
       - Release
 jobs:
@@ -70,10 +70,10 @@ jobs:
           release_name: v1.0
           body: |
             Changes in this Release
-            - testing wworkflow
-            - Second Change
+            - automated build
+            - automated release
             draft: false
-            prerelease: true
+            prerelease: false
 
       - name: Download artifact
         uses: actions/download-artifact@v1
