@@ -43,7 +43,7 @@ jobs:
         env:
           GOOS: windows
           GOARCH: amd64
-        run: go build -v -o prtg_vmware.exe .
+        run: go build -mod=vendor-v -o prtg_vmware.exe .
 
       - name: zip release # This would actually build your project, using zip for an example artifact
         run: |
