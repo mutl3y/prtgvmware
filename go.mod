@@ -1,4 +1,4 @@
-module github.com/mutl3y/PRTG_VMware
+module github.com/mutl3y/prtgvmware
 
 go 1.13
 

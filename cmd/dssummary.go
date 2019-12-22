@@ -17,7 +17,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/mutl3y/PRTG_VMware/app"
+	"github.com/mutl3y/prtgvmware/app"
 	"github.com/spf13/cobra"
 )
 

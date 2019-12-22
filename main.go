@@ -15,7 +15,7 @@
  */
 package main
 
-import "github.com/mutl3y/PRTG_VMware/cmd"
+import "github.com/mutl3y/prtgvmware/cmd"
 
 func main() {
 	cmd.Execute()

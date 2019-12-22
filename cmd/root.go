@@ -17,7 +17,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/mutl3y/PRTG_VMware/app"
+	"github.com/mutl3y/prtgvmware/app"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"log"
@@ -50,7 +50,7 @@ func Execute() {
 
 func init() {
 	//cobra.OnInitialize(initConfig)
-	//rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "PRTG_VMware.yaml", "config file ")
+	//rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "prtgvmware.yaml", "config file ")
 	//rootCmd.PersistentFlags().BoolP("saveconfig", "s", false, "save parameters to file")
 
 	rootCmd.PersistentFlags().StringP("username", "u", "", "vcenter username")
@@ -84,10 +84,10 @@ func init() {
 //			log.Fatal(err)
 //		}
 //
-//		// Search config in home directory with name "PRTG_VMware" (without extension).
+//		// Search config in home directory with name "prtgvmware" (without extension).
 //		viper.AddConfigPath(home)
 //		viper.SetConfigType("yml")
-//		viper.SetConfigName("PRTG_VMware")
+//		viper.SetConfigName("prtgvmware")
 //	}
 //
 //	viper.AutomaticEnv() // read in environment variables that match

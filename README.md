@@ -1,4 +1,4 @@
-# PRTG_vmware
+# prtgvmware
 Tested with PRTG Version 19.3.51.2722
 
 # Custom sensors for vmware stats for PRTG Network Monitor
@@ -15,7 +15,7 @@ Tested with PRTG Version 19.3.51.2722
 
 ### Download
 To install this prtg VMware sensor plugin you need to download the following
-from the [releases](https://github.com/mutl3y/PRTG_VMware) section:
+from the [releases](https://github.com/mutl3y/prtgvmware) section:
 * plugin binary (choose correct binary according to your architecture) 
 can be run remotely on a linux box, 
 place on remote host in standard vmware script location
