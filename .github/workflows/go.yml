@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     branches:
-      - v0.15
+      - v1.0.2
     tags:
       - Release
 jobs:
@@ -43,17 +43,17 @@ jobs:
         env:
           GOOS: windows
           GOARCH: amd64
-        run: go build -mod=vendor -v -o prtg_vmware.exe .
+        run: go build -mod=vendor -v -o prtgvmware.exe .
 
       - name: zip release # This would actually build your project, using zip for an example artifact
         run: |
-          zip --junk-paths prtg_vmware.zip README.md prtg_vmware.exe
+          zip --junk-paths prtgvmware.zip README.md prtgvmware.exe
 
       - name: Upload binary
         uses: actions/upload-artifact@v1
         with:
-          name: prtg_vmware.zip
-          path: ./prtg_vmware.zip
+          name: prtgvmware.zip
+          path: ./prtgvmware.zip
 
   release:
     name: Upload Release Asset
@@ -67,19 +67,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: v1.0
+          release_name: v1.0.2
           body: |
             Changes in this Release
-            - testing wworkflow
-            - Second Change
+            - automated build
+            - renamed repo, fixes to action code
             draft: false
-            prerelease: true
+            prerelease: false
 
       - name: Download artifact
         uses: actions/download-artifact@v1
         with:
-          name: prtg_vmware.zip
-          path: prtg_vmware
+          name: prtgvmware.zip
+          path: prtgvmware
 
       - name: Upload Release Asset
         id: upload-release-asset
@@ -88,8 +88,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./prtg_vmware/prtg_vmware.zip
-          asset_name: prtg_vmware.zip
+          asset_path: ./prtgvmware/prtgvmware.zip
+          asset_name: prtgvmware.zip
           asset_content_type: application/zip
 
       - name: Slack notification
