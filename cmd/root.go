@@ -27,8 +27,9 @@ import (
 
 // rootCmd represents the base command when called without any sub-commands
 var rootCmd = &cobra.Command{
-	Use:   "prtgvmware",
-	Short: "VMware sensors for prtg",
+	Use:     "prtgvmware",
+	Short:   "VMware sensors for prtg",
+	Version: "v1.0.3",
 	Long: `advanced sensors for VMware
 
 this app exposes all the common stats for vm's, Hypervisor's, VDS & Datastore's

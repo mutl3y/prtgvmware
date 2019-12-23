@@ -128,8 +128,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 	if err != nil {
 		return
 	}
-	defer v.Destroy(ctx)
-
+	defer func() { _ = v.Destroy(ctx) }()
 	switch id.Type {
 	case "VirtualMachine", "Datastore", "VmwareDistributedVirtualSwitch", "DistributedVirtualPortgroup":
 		return []types.ManagedObjectReference{id}, nil
@@ -158,7 +157,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 
 	case "ClusterComputeResource":
 		var wd mo.ClusterComputeResource
-		err = v.Properties(ctx, id, []string{"network", "host", "datastore"}, &wd)
+		err = v.Properties(ctx, id, []string{"network", "Host", "datastore"}, &wd)
 		if err != nil {
 			return
 		}

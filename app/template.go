@@ -158,7 +158,7 @@ func snapShotSensor(Age time.Duration, Tags string) Check {
 		Requires: "ping",
 		Createdata: Createdata{Name: name, Tags: Tags, Errorintervalsdown: "5",
 			Autoacknowledge: "1", Priority: "3", Exefile: filepath.Base(os.Args[0]), Mutex: "prtgvmware",
-			Exeparams: fmt.Sprintf("snapshots -U https://%%host/sdk -u %%windowsuser -p %%windowspassword --snapAge %v --tags %v --maxWarn 1 --maxErr 3", Age, Tags),
+			Exeparams: fmt.Sprintf("snapshots -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --snapAge %v --tags %v --maxWarn 1 --maxErr 3", Age, Tags),
 		},
 	}
 	return c
@@ -166,7 +166,7 @@ func snapShotSensor(Age time.Duration, Tags string) Check {
 
 func GenTemplate(tags []string, Age time.Duration, tplate string) error {
 	//fmt.Println(basetemplate)
-	creds := "-U https://%host/sdk -u %windowsuser -p %windowspassword"
+	creds := "-U https://%Host/sdk -u %windowsuser -p %windowspassword"
 	d := NewDeviceTemplate(Age, strings.Join(tags, ","))
 
 	ch1 := fmt.Sprintf("metascan %v --snapAge %v --tags %v", creds, Age, strings.Join(tags, ","))
