@@ -1,3 +1,6 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/mutl3y/prtgvmware)](https://goreportcard.com/report/github.com/mutl3y/prtgvmware)
+[![Go Report Card](https://github.com/mutl3y/prtgvmware/workflows/Build%20and%20Release/badge.svg)](https://github.com/mutl3y/prtgvmware/workflows/Build%20and%20Release/badge.svg)
+
 # prtgvmware
 Tested with PRTG Version 19.3.51.2722
 
