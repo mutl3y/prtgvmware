@@ -82,7 +82,7 @@ func (c *Client) getmanagedObjectMap() (m map[string]managedObject, err error) {
 	if err != nil {
 		return
 	}
-	defer v.Destroy(ctx)
+	defer func() { _ = v.Destroy(ctx) }()
 
 	any := []string{"ManagedEntity"}
 	var objs []mo.ManagedEntity
@@ -141,7 +141,7 @@ func (c *Client) obMeta(tm *TagMap, moidMap *moidNames, Age time.Duration) (meta
 				Name:        na,
 				ID:          id,
 				Exefile:     filepath.Base(os.Args[0]),
-				Params:      fmt.Sprintf("summary -U https://%%host/sdk -u %%windowsuser -p %%windowspassword --oid %v --snapAge %v", id, Age),
+				Params:      fmt.Sprintf("summary -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --oid %v --snapAge %v", id, Age),
 				Displayname: na,
 			})
 		case "Datastore":
@@ -149,21 +149,21 @@ func (c *Client) obMeta(tm *TagMap, moidMap *moidNames, Age time.Duration) (meta
 				Name:    "DS " + na,
 				ID:      id,
 				Exefile: filepath.Base(os.Args[0]),
-				Params:  fmt.Sprintf("dssummary -U https://%%host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id),
+				Params:  fmt.Sprintf("dssummary -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id),
 			})
 		case "HostSystem":
 			meta.Items = append(meta.Items, Item{
 				Name:    "Host " + na,
 				ID:      id,
 				Exefile: filepath.Base(os.Args[0]),
-				Params:  fmt.Sprintf("hssummary -U https://%%host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id),
+				Params:  fmt.Sprintf("hssummary -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id),
 			})
 		case "VmwareDistributedVirtualSwitch":
 			meta.Items = append(meta.Items, Item{
 				Name:    "VDS " + na,
 				ID:      id,
 				Exefile: filepath.Base(os.Args[0]),
-				Params:  fmt.Sprintf("vdssummary -U https://%%host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id),
+				Params:  fmt.Sprintf("vdssummary -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id),
 			})
 		case "", "ClusterComputeResource", "Folder", "VirtualApp", "Datacenter", "DistributedVirtualPortgroup":
 		default:

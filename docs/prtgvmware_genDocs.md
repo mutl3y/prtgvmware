@@ -31,7 +31,7 @@ prtgvmware genDocs [flags]
       --msgError string    message to use if error value exceeded (used with snapshots)
       --msgWarn string     message to use if warning value exceeded (used with snapshots)
   -n, --name string        name of vm, supports *partofname*
-  -i, --oid string         exact id of an object e.g. vm-12, vds-81, host-9, datastore-10 
+  -i, --oid string         exact id of an object e.g. vm-12, vds-81, Host-9, datastore-10 
   -p, --password string    vcenter password
   -a, --snapAge duration   ignore snapshots younger than (default 168h0m0s)
   -t, --tags strings       slice of tags to include

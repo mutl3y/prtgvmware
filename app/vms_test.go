@@ -437,7 +437,7 @@ func TestClient_HostSummary(t *testing.T) {
 		//	{"", "", true},
 		//{"fail", "", "datastore-1", true},
 		//{"name", "192.168.0.194", "", false},
-		{"moid", "", "host-63", false},
+		{"moid", "", "Host-63", false},
 	}
 
 	for _, tt := range tests {
@@ -464,7 +464,7 @@ func TestClient_Metrics(t *testing.T) {
 		wantErr bool
 	}{
 		//{"", types.ManagedObjectReference{Type:  "VirtualMachine",Value: "vm-16"}, false},
-		//{"", types.ManagedObjectReference{Type: "HostSystem", Value: "host-12"}, false},
+		//{"", types.ManagedObjectReference{Type: "HostSystem", Value: "Host-12"}, false},
 		//{"ds", types.ManagedObjectReference{Type: "Datastore", Value: "datastore-10"}, false},
 		{"vds", types.ManagedObjectReference{Type: "VmwareDistributedVirtualSwitch", Value: "dvs-19"}, false},
 	}
@@ -547,7 +547,7 @@ func TestClient_VdsSummary(t *testing.T) {
 //	}{
 //		{"", "name", "", u, true},
 //		{"", "*2", "", u, false},
-//		{"", "", "host-9", u, false},
+//		{"", "", "Host-9", u, false},
 //
 //		//{"", property.Filter{"self": "*6"}, false},
 //		//{"", property.Filter{"self": "VirtualMachine:vm-26"}, false},
@@ -572,3 +572,25 @@ func TestClient_VdsSummary(t *testing.T) {
 //		})
 //	}
 //}
+
+func TestClient_VmTracker(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		v, h    string
+		wantErr bool
+	}{
+		{"", "vcenter", "192.168.0.1", false},
+		{"", "ad", "192.168.0.1", false},
+		{"", "testServer", "192.168.0.1", false},
+		{"", "testServer", "192.168.0.1", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{}
+			if err := c.VmTracker(tt.v, tt.h); (err != nil) != tt.wantErr {
+				t.Errorf("VmTracker() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

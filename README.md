@@ -6,7 +6,8 @@ Tested with PRTG Version 19.3.51.2722
 * [Configuring PRTG Network Monitor](#configuring-prtg-network-monitor)
   * [Download](#download)
   * [Copy files](#copy-files)
-  * [Adding device](#adding-device)
+  * [Adding device Metascan](#adding-device-using-metascan)
+  * [Adding device Dynamic](#adding-device-using-dynamic-templates)
   * [Cached Credentials](#cached-credentials)
   * [Investigating issues](#investigating-issues)
   * [XML: The returned xml does not match the expected schema. (code: PE233)](#xml-the-returned-xml-does-not-match-the-expected-schema-code-pe233)
@@ -18,9 +19,9 @@ To install this prtg VMware sensor plugin you need to download the following
 from the [releases](https://github.com/mutl3y/prtgvmware) section:
 * plugin binary (choose correct binary according to your architecture) 
 can be run remotely on a linux box, 
-place on remote host in standard vmware script location
+place on remote Host in standard vmware script location
 on linux this is /var/prtg/scriptsxml/ and make the file executable via the user you intend to run it as 
-remembering to enter, linux user creds in for remote host
+remembering to enter, linux user creds in for remote Host
 
 for windows place in the customsensosrs\exexml folder
 **Make sure to download files from the latest release.**

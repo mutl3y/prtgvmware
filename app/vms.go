@@ -21,11 +21,13 @@ import (
 	"encoding/json"
 	"fmt"
 	ps "github.com/PRTG/go-prtg-sensor-api"
+	"github.com/juju/fslock"
 	"github.com/vmware/govmomi/performance"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
+	"io/ioutil"
 	"log"
 	"sort"
 	"strings"
@@ -62,6 +64,58 @@ var (
 	}
 )
 
+func getLock(f string, t time.Duration) (lock *fslock.Lock, err error) {
+	lock = fslock.New(f + ".lock")
+	for start := time.Now(); time.Since(start) < t; {
+		err = lock.TryLock()
+		if err == nil {
+			return
+		}
+	}
+
+	return
+
+}
+
+func (c *Client) VmTracker(vm, host string) error {
+	type vmTracker struct {
+		Host     string
+		LastSeen time.Time
+	}
+	hvmFile := strings.Join([]string{configDir(), "vmTracker.json"}, pathSep)
+	lock, err := getLock(hvmFile, 10*time.Second)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = lock.Unlock() }()
+
+	vmBytes, err := ioutil.ReadFile(hvmFile)
+	if err != nil {
+		fmt.Println(err)
+	}
+	var vmMap map[string]vmTracker
+	err = json.Unmarshal(vmBytes, &vmMap)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	if vmMap == nil {
+		vmMap = make(map[string]vmTracker)
+	}
+
+	vmMap[vm] = vmTracker{
+		Host:     host,
+		LastSeen: time.Now(),
+	}
+
+	outJs, err := json.MarshalIndent(vmMap, "", "    ")
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(hvmFile, outJs, 0644)
+	return err
+}
+
 func (c *Client) findOne(name, vmwareType string) (moid types.ManagedObjectReference, err error) {
 	ctx := context.Background()
 	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
@@ -71,8 +125,7 @@ func (c *Client) findOne(name, vmwareType string) (moid types.ManagedObjectRefer
 		err = fmt.Errorf("failed to create container %v %v %v", name, vmwareType, err)
 		return
 	}
-	defer v.Destroy(ctx)
-
+	defer func() { _ = v.Destroy(ctx) }()
 	switch vmwareType {
 	case "HostSystem":
 		ol := mo.HostSystem{}
@@ -205,7 +258,7 @@ func (c *Client) VmSummary(name, moid string, lim *LimitsStruct, age time.Durati
 		return fmt.Errorf("hostsystem properties failure %v", err)
 	}
 
-	pr.text = "on host " + hs.Name
+	pr.text = "on Host " + hs.Name
 	err = c.MetricS(v0.Reference(), pr, vmSummaryDefault, 20)
 	if err != nil {
 		return err
@@ -235,7 +288,7 @@ func (c *Client) VmSummary(name, moid string, lim *LimitsStruct, age time.Durati
 		_ = pr.Add(perc, ps.SensorChannel{Channel: "free Space (Percent) " + d, Unit: "Percent", LimitMinWarning: "20", LimitMinError: "10", LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space"})
 	}
 	err = pr.Print(elapsed, txt)
-
+	_ = c.VmTracker(v0.Name, hs.Name)
 	return err
 }
 
@@ -313,8 +366,7 @@ func (c *Client) DsSummary(name, moid string, lim *LimitsStruct, js bool) (err e
 		return nil
 	}
 
-	defer dv.Destroy(ctx)
-
+	defer func() { _ = dv.Destroy(ctx) }()
 	id := types.ManagedObjectReference{
 		Type:  "Datastore",
 		Value: moid,
@@ -371,7 +423,8 @@ func (c *Client) VdsSummary(name, moid string, js bool) (err error) {
 	if err != nil {
 		return fmt.Errorf("create container %v", err)
 	}
-	defer v.Destroy(ctx)
+
+	defer func() { _ = v.Destroy(ctx) }()
 	id := types.ManagedObjectReference{
 		Type:  "VmwareDistributedVirtualSwitch",
 		Value: moid,
@@ -420,7 +473,7 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	if err != nil {
 		return fmt.Errorf("create container %v", err)
 	}
-	defer v.Destroy(ctx)
+	defer func() { _ = v.Destroy(ctx) }()
 	id := types.ManagedObjectReference{
 		Type:  "HostSystem",
 		Value: moid,
@@ -440,7 +493,7 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 
 	pr := NewPrtgData("HostSummary")
 
-	ps1 := ps.SensorChannel{Channel: "Power state", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.Google.Gsa.Health", LimitWarningMsg: "host was put to sleep", LimitErrorMsg: "host in unknown state, please investigate"}
+	ps1 := ps.SensorChannel{Channel: "Power state", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.Google.Gsa.Health", LimitWarningMsg: "Host was put to sleep", LimitErrorMsg: "Host in unknown state, please investigate"}
 	switch hs.Runtime.PowerState {
 	case "poweredOn":
 		_ = pr.Add(0, ps1)
