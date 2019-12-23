@@ -78,7 +78,7 @@ prtgvmware.exe dynamicTemplates --tags prtg --snapAge 7d
 * Enter device name (e.g. ```vcenter```)
 * In the "IPv4 Address/DNS Name of vcenter (without https://),
   e.g. `vcenter.local..net`
-* Choose "Automatic sensor creation using specific device tplate in ```"Sensor Management"```
+* Choose "Automatic sensor creation using specific device template in ```"Sensor Management"```
 * Choose ``prtgvmware`` device template and deselect all others, this will be whatever you set in batchfile defaults to prtgvmware
 * Change schedule to check ```hourly``` 
 * Enter VMware read only creds to windows user and password, leave domain empty I.E. ```administrator@vsphere.local```
@@ -94,8 +94,9 @@ you can disable this behaviour causing the client to reconnect each time
 ## Investigating issues
 
 ##### XML: The returned xml does not match the expected schema. (code: PE233)
+this is normally some sort of typo in the command, try running manually adding -j for pretty printed json
 
-To investigate this issue please:
+To investigate an issue further please:
 * click the failing sensor
 * choose Settings button
 * in the "SENSOR SETTINGS" section, item "EXE Result" mark "Write EXE result to disk"
