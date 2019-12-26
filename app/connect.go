@@ -36,6 +36,7 @@ import (
 
 var pathSep = string(os.PathSeparator)
 
+// Client holds the connections we need to query the remote system
 type Client struct {
 	Cached bool
 	c      *vim25.Client
@@ -44,33 +45,31 @@ type Client struct {
 	ctx    context.Context
 }
 
+// NewClient returns a logged in client
 func NewClient(u *url.URL, user, pw string, cache bool) (c Client, err error) {
 
 	// load from cache if enabled, will fall through to login code if there are any issues
 	if cache {
-		c, err := NewClientFromDisk("cookie", pw, u)
+		c, err := clientFromDisk("cookie", pw, u)
 		if err == nil {
 			c.Cached = true
 			return c, nil
 		}
-		fmt.Println(err)
 	}
 
 	ctx := context.Background()
 	if u.Host == "" {
 		fmt.Println(os.Args)
 		return Client{}, fmt.Errorf("need to provide a url")
-	} else {
-
-		u.User = url.UserPassword(user, pw)
-		soapClient := soap.NewClient(u, true)
-		c.c, err = vim25.NewClient(ctx, soapClient)
-		if err != nil {
-			return c, fmt.Errorf("unable to connect to %v ", u)
-		}
-		c.r = rest.NewClient(c.c)
-
 	}
+
+	u.User = url.UserPassword(user, pw)
+	soapClient := soap.NewClient(u, true)
+	c.c, err = vim25.NewClient(ctx, soapClient)
+	if err != nil {
+		return c, fmt.Errorf("unable to connect to %v ", u)
+	}
+	c.r = rest.NewClient(c.c)
 
 	err = sessionLogin(c.c, u)
 	if err != nil {
@@ -99,7 +98,7 @@ func NewClient(u *url.URL, user, pw string, cache bool) (c Client, err error) {
 	c.m = view.NewManager(c.c)
 	c.ctx = ctx
 	if cache {
-		err := c.Save2Disk("cookie", pw)
+		err := c.save2Disk("cookie", pw)
 		if err != nil {
 			return c, fmt.Errorf("failed to save cached creds to disk")
 		}
@@ -122,7 +121,7 @@ func configDir() string {
 	return dir
 }
 
-func NewClientFromDisk(fn, password string, u *url.URL) (c Client, err error) {
+func clientFromDisk(fn, password string, u *url.URL) (c Client, err error) {
 	apiCookie := fn + ".api"
 	restCookie := fn + ".rest"
 
@@ -188,7 +187,7 @@ func NewClientFromDisk(fn, password string, u *url.URL) (c Client, err error) {
 	return c, nil
 }
 
-func (c *Client) Save2Disk(fn, password string) (err error) {
+func (c *Client) save2Disk(fn, password string) (err error) {
 	apiCookie := fn + ".api"
 	restCookie := fn + ".rest"
 
@@ -207,6 +206,10 @@ func (c *Client) Save2Disk(fn, password string) (err error) {
 			return err
 		}
 		rsEncrypt, err := Encrypt(rs, password)
+		if err != nil {
+			return err
+
+		}
 		err = ioutil.WriteFile(rsfn, rsEncrypt, 0644)
 		if err != nil {
 			return err
@@ -231,7 +234,12 @@ func (c *Client) Save2Disk(fn, password string) (err error) {
 
 	return nil
 }
+
+// Logout of remote system
 func (c *Client) Logout() error {
+	if c.Cached {
+		return nil
+	}
 	req := types.Logout{
 		This: *c.c.ServiceContent.SessionManager,
 	}
@@ -299,7 +307,7 @@ func sessionCheck(c *vim25.Client) error {
 //		return err
 //	}
 //
-//	defer c.Logout(ctx)
+//	defer func(){_=c.Logout()}()(ctx)
 //
 //	return f(ctx, c.Client)
 //}

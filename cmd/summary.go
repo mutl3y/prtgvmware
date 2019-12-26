@@ -83,7 +83,7 @@ counters included by default are
 			return
 		}
 
-		err = c.VmSummary(name, oid, &lim, snapAge, js, extraSensors)
+		err = c.VMSummary(name, oid, &lim, snapAge, js, extraSensors)
 		if err != nil {
 			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
 

@@ -49,6 +49,7 @@ func TestClient_DynTemplate(t *testing.T) {
 			if err != nil {
 				t.Errorf("failed %v", err)
 			}
+			defer func() { _ = c.Logout() }()
 
 			err = c.DynTemplate([]string{"PRTG"}, time.Second, "deleteme")
 			if err != nil {

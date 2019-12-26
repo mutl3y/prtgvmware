@@ -83,7 +83,7 @@ func TestPrtgData2_Print2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &PrtgData{
+			p := &prtgData{
 				mu:    tt.fields.mu,
 				name:  tt.fields.name,
 				moid:  tt.fields.moid,
@@ -91,8 +91,8 @@ func TestPrtgData2_Print2(t *testing.T) {
 				text:  tt.fields.txt,
 				items: tt.fields.items,
 			}
-			if err := p.Print(tt.args.checkTime, tt.args.txt); (err != nil) != tt.wantErr {
-				t.Errorf("Print() error = %v, wantErr %v", err, tt.wantErr)
+			if err := p.print(tt.args.checkTime, tt.args.txt); (err != nil) != tt.wantErr {
+				t.Errorf("print() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

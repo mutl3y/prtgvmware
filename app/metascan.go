@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	"log"
 	"os"
@@ -29,6 +30,7 @@ import (
 	"time"
 )
 
+// Item is used in templates
 type Item struct {
 	Name        string `xml:"name,omitempty"`
 	ID          string `xml:"id,omitempty"`
@@ -76,9 +78,12 @@ func (m *moidNames) Gettype(moid string) string {
 
 }
 
-func (c *Client) getmanagedObjectMap() (m map[string]managedObject, err error) {
+func (c *Client) getmanagedObjectMap() (mobj map[string]managedObject, err error) {
 	ctx := context.Background()
-	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{}, true)
+	m := view.NewManager(c.c)
+	defer func() { _, _ = m.Destroy(ctx) }()
+
+	v, err := m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"ManagedEntity"}, true)
 	if err != nil {
 		return
 	}
@@ -91,10 +96,10 @@ func (c *Client) getmanagedObjectMap() (m map[string]managedObject, err error) {
 		return
 	}
 
-	m = make(map[string]managedObject, 0)
+	mobj = make(map[string]managedObject, 0)
 
 	for _, v := range objs {
-		m[v.Self.Value] = managedObject{
+		mobj[v.Self.Value] = managedObject{
 			name:       v.Name,
 			vmwareType: v.Reference().Type,
 		}
@@ -102,18 +107,19 @@ func (c *Client) getmanagedObjectMap() (m map[string]managedObject, err error) {
 	return
 }
 
+// Metascan returns template data to PRTG for given tags
 func (c *Client) Metascan(tags []string, tm *TagMap, Age time.Duration) (err error) {
 	for _, tag := range tags {
-		err := c.GetObjIds(tag, tm)
+		err := c.getObjIds(tag, tm)
 		if err != nil {
-			return fmt.Errorf("%v", err)
+			return fmt.Errorf("getObjIds %v", err)
 		}
 	}
 	moidNames := newMoidNames(c)
 
 	meta, err := c.obMeta(tm, moidNames, Age)
 	if err != nil {
-		return err
+		return fmt.Errorf("objMeta %v", err)
 	}
 
 	if len(meta.Items) == 0 {
@@ -121,7 +127,7 @@ func (c *Client) Metascan(tags []string, tm *TagMap, Age time.Duration) (err err
 	}
 	output, err := xml.MarshalIndent(meta, "", "   ")
 	if err != nil {
-		return
+		return fmt.Errorf("marshal %v", err)
 	}
 
 	fmt.Printf("%+v", string(output))
@@ -133,6 +139,8 @@ func (c *Client) obMeta(tm *TagMap, moidMap *moidNames, Age time.Duration) (meta
 	meta = prtg{}
 	meta.Items = make([]Item, 0, 10)
 	for id := range tm.Data {
+		creds := fmt.Sprintf("-U https://%%host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id)
+
 		na := moidMap.GetName(id)
 		switch moidMap.Gettype(id) {
 		case "VirtualMachine":
@@ -140,7 +148,7 @@ func (c *Client) obMeta(tm *TagMap, moidMap *moidNames, Age time.Duration) (meta
 				Name:        na,
 				ID:          id,
 				Exefile:     filepath.Base(os.Args[0]),
-				Params:      fmt.Sprintf("summary -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --oid %v --snapAge %v", id, Age),
+				Params:      fmt.Sprintf("summary %v --snapAge %v", creds, Age),
 				Displayname: na,
 			})
 		case "Datastore":
@@ -148,21 +156,21 @@ func (c *Client) obMeta(tm *TagMap, moidMap *moidNames, Age time.Duration) (meta
 				Name:    "DS " + na,
 				ID:      id,
 				Exefile: filepath.Base(os.Args[0]),
-				Params:  fmt.Sprintf("dsSummary -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id),
+				Params:  fmt.Sprintf("dsSummary %v", creds),
 			})
 		case "HostSystem":
 			meta.Items = append(meta.Items, Item{
 				Name:    "Host " + na,
 				ID:      id,
 				Exefile: filepath.Base(os.Args[0]),
-				Params:  fmt.Sprintf("hsSummary -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id),
+				Params:  fmt.Sprintf("hsSummary %v", creds),
 			})
 		case "VmwareDistributedVirtualSwitch":
 			meta.Items = append(meta.Items, Item{
 				Name:    "VDS " + na,
 				ID:      id,
 				Exefile: filepath.Base(os.Args[0]),
-				Params:  fmt.Sprintf("vdsSummary -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --oid %v", id),
+				Params:  fmt.Sprintf("vdsSummary %v", creds),
 			})
 		case "", "ClusterComputeResource", "Folder", "VirtualApp", "Datacenter", "DistributedVirtualPortgroup":
 		default:

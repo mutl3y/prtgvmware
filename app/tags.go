@@ -20,11 +20,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/vmware/govmomi/vapi/tags"
+	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 	"strings"
 	"sync"
-	"time"
 )
 
 type objData struct {
@@ -33,11 +33,13 @@ type objData struct {
 	RefType string
 }
 
+// TagMap holds a map of tag to object data
 type TagMap struct {
 	Data map[string]objData
 	mu   *sync.RWMutex
 }
 
+// NewTagMap instantiates a new map to sore tag info
 func NewTagMap() *TagMap {
 	rtn := TagMap{}
 	rtn.Data = make(map[string]objData, 0)
@@ -78,18 +80,19 @@ func (t *TagMap) check(vm string, tag []string) bool {
 func (c *Client) list(tagIds []string, tm *TagMap) (err error) {
 
 	for _, tag := range tagIds {
-		err = c.GetObjIds(tag, tm)
+		err = c.getObjIds(tag, tm)
 	}
 
 	return
 }
 
-func (c *Client) GetObjIds(tag string, tm *TagMap) (err error) {
+func (c *Client) getObjIds(tag string, tm *TagMap) (err error) {
 	ctx := context.Background()
 	if c.r == nil {
 		return fmt.Errorf("could not connect using rest client, check vcenter logs")
 	}
 	manager := tags.NewManager(c.r)
+
 	workingData := make([]types.ManagedObjectReference, 0, 10)
 
 	objs, err := manager.GetAttachedObjectsOnTags(ctx, []string{tag})
@@ -97,17 +100,18 @@ func (c *Client) GetObjIds(tag string, tm *TagMap) (err error) {
 		if strings.Contains(err.Error(), "404 Not Found") {
 			return nil
 		}
-		return fmt.Errorf("GetObjIds issue %v", err)
+		return fmt.Errorf("getObjIds issue %v", err)
 	}
 
 	if len(objs) == 0 {
-		return
+		return fmt.Errorf("no results %v", err)
+
 	}
 	for _, obj := range objs[0].ObjectIDs {
 		workingData = append(workingData, obj.Reference())
 		rtn, err := c.getChildIds(obj.Reference())
 		if err != nil {
-			return err
+			return fmt.Errorf("getChildIds  %v", err)
 		}
 		workingData = append(workingData, rtn...)
 	}
@@ -123,21 +127,26 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 	rtnData = make([]types.ManagedObjectReference, 0, 10)
 
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
-	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{}, true)
+	//	ctx, _ = context.WithTimeout(ctx, 10*time.Second)
+	m := view.NewManager(c.c)
+	v, err := m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{id.Type}, true)
 	if err != nil {
-		return
+		err = fmt.Errorf("CreateContainerView %v", err)
+		return nil, err
+
 	}
 	defer func() { _ = v.Destroy(ctx) }()
 	switch id.Type {
 	case "VirtualMachine", "Datastore", "VmwareDistributedVirtualSwitch", "DistributedVirtualPortgroup":
 		return []types.ManagedObjectReference{id}, nil
 	case "HostSystem":
+
 		var wd mo.HostSystem
 		err = v.Properties(ctx, id, []string{"vm", "datastore", "network"}, &wd)
 		if err != nil {
-			fmt.Println(err)
-			return
+			err = fmt.Errorf("vm Properties %v", err)
+			return nil, err
+
 		}
 		rtnData = append(rtnData, wd.Vm...)
 		rtnData = append(rtnData, wd.Network...)
@@ -147,8 +156,8 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.VirtualApp
 		err = v.Properties(ctx, id, []string{"vm", "datastore", "network"}, &wd)
 		if err != nil {
-			fmt.Println(err)
-			return
+			err = fmt.Errorf("vapp Properties %v", err)
+			return nil, err
 		}
 
 		rtnData = append(rtnData, wd.Vm...)
@@ -157,9 +166,10 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 
 	case "ClusterComputeResource":
 		var wd mo.ClusterComputeResource
-		err = v.Properties(ctx, id, []string{"network", "Host", "datastore"}, &wd)
+		err = v.Properties(ctx, id, []string{"network", "host", "datastore"}, &wd)
 		if err != nil {
-			return
+			err = fmt.Errorf("cluster Properties %v", err)
+			return nil, err
 		}
 		rtnData = append(rtnData, wd.Network...)
 		rtnData = append(rtnData, wd.Host...)
@@ -169,6 +179,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.Datacenter
 		err = v.Properties(ctx, id, []string{"hostFolder", "datastoreFolder", "networkFolder"}, &wd)
 		if err != nil {
+			err = fmt.Errorf("ds Properties %v", err)
 			return nil, err
 		}
 		x := make([]types.ManagedObjectReference, 0, 3)
@@ -185,7 +196,8 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.Folder
 		err = v.Properties(ctx, id, []string{"childType", "childEntity"}, &wd)
 		if err != nil {
-			return
+			err = fmt.Errorf("folder properties %v", err)
+			return nil, err
 		}
 		for _, id := range wd.ChildEntity {
 			d, err := c.getChildIds(id)
@@ -196,7 +208,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		}
 
 	default:
-		printJson(false, "getChildIds, missed type, Please log an issue on Github", id.Type)
+		printJSON(false, "getChildIds, missed type, Please log an issue on Github", id.Type)
 		return nil, nil
 	}
 	return

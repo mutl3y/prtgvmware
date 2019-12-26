@@ -26,12 +26,12 @@ import (
 	"time"
 )
 
-// ******* from here ************ //
+// LimitsStruct is used to set error and warning levels
 type LimitsStruct struct {
 	MinWarn, MaxWarn, MinErr, MaxErr, WarnMsg, ErrMsg string
 }
 
-type PrtgData struct {
+type prtgData struct {
 	mu    *sync.RWMutex
 	name  string
 	moid  string
@@ -40,15 +40,15 @@ type PrtgData struct {
 	items []ps.SensorChannel
 }
 
-func NewPrtgData(name string) *PrtgData {
-	p := PrtgData{}
+func newPrtgData(name string) *prtgData {
+	p := prtgData{}
 	p.items = make([]ps.SensorChannel, 0, 10)
 	p.name = name
 	p.mu = &sync.RWMutex{}
 	return &p
 }
 
-func (p *PrtgData) Add(value interface{}, item ps.SensorChannel) (err error) {
+func (p *prtgData) add(value interface{}, item ps.SensorChannel) (err error) {
 	switch value.(type) {
 	case float64:
 		item.Value = fmt.Sprintf("%0.2f", value)
@@ -57,13 +57,16 @@ func (p *PrtgData) Add(value interface{}, item ps.SensorChannel) (err error) {
 		item.Value = fmt.Sprintf("%v", value)
 	}
 
+	if item.Unit == "Percent" {
+		item.DecimalMode = "1"
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.items = append(p.items, item)
 	return
 }
 
-func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
+func (p *prtgData) print(checkTime time.Duration, txt bool) error {
 
 	s := ps.New()
 	if p.err != "" {
@@ -113,6 +116,7 @@ func (p *PrtgData) Print(checkTime time.Duration, txt bool) error {
 	return nil
 }
 
+//SensorWarn is used to return an error via PRTG message
 func SensorWarn(inErr error, er bool) {
 	s := ps.New()
 	if er {
