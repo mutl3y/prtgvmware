@@ -29,6 +29,7 @@ import (
 
 var filename = filepath.Base(os.Args[0])
 
+// Devicetemplate xml template
 type Devicetemplate struct {
 	XMLName  xml.Name `xml:"devicetemplate"`
 	Text     string   `xml:",chardata"`
@@ -39,6 +40,7 @@ type Devicetemplate struct {
 	Create   []Check  `xml:"create,omitempty"`
 }
 
+// NewDeviceTemplate creates a new base template
 func NewDeviceTemplate(Age time.Duration, Tags string) *Devicetemplate {
 	d := &Devicetemplate{
 		XMLName:  xml.Name{},
@@ -71,6 +73,7 @@ func (dev *Devicetemplate) save(tplate string) (err error) {
 	return ioutil.WriteFile(tplate+".odt", b.Bytes(), os.ModePerm)
 }
 
+// Check xml template
 type Check struct {
 	ID          string     `xml:"id,attr,omitempty"`
 	Kind        string     `xml:"kind,attr,omitempty"`
@@ -80,11 +83,14 @@ type Check struct {
 	Createdata  Createdata `xml:"createdata,omitempty"`
 	Displayname string     `xml:"displayname,attr,omitempty"`
 }
+
+// Metadata xml template
 type Metadata struct {
 	Exefile   string `xml:"exefile,omitempty"`
 	Exeparams string `xml:"exeparams,omitempty"`
 }
 
+// Createdata xml template
 type Createdata struct {
 	Priority           string `xml:"priority,omitempty"`
 	Position           string `xml:"position,omitempty"`
@@ -101,7 +107,7 @@ type Createdata struct {
 	Decimaldigits      string `xml:"decimaldigits,omitempty"`
 }
 
-func NewCreate(id, params, tags, intervalSecs string) Check {
+func newCreate(id, params, tags, intervalSecs string) Check {
 	c := Check{
 		ID:       id,
 		Kind:     "exexml",
@@ -158,19 +164,20 @@ func snapShotSensor(Age time.Duration, Tags string) Check {
 		Requires: "ping",
 		Createdata: Createdata{Name: name, Tags: Tags, Errorintervalsdown: "5",
 			Autoacknowledge: "1", Priority: "3", Exefile: filepath.Base(os.Args[0]), Mutex: "prtgvmware",
-			Exeparams: fmt.Sprintf("snapshots -U https://%%Host/sdk -u %%windowsuser -p %%windowspassword --snapAge %v --tags %v --maxWarn 1 --maxErr 3", Age, Tags),
+			Exeparams: fmt.Sprintf("snapshots -U https://%%host/sdk -u %%windowsuser -p %%windowspassword --snapAge %v --tags %v --maxWarn 1 --maxErr 3", Age, Tags),
 		},
 	}
 	return c
 }
 
+// GenTemplate creates a template for use with single time ingestion / manual reset
 func GenTemplate(tags []string, Age time.Duration, tplate string) error {
 	//fmt.Println(basetemplate)
 	creds := "-U https://%Host/sdk -u %windowsuser -p %windowspassword"
 	d := NewDeviceTemplate(Age, strings.Join(tags, ","))
 
 	ch1 := fmt.Sprintf("metascan %v --snapAge %v --tags %v", creds, Age, strings.Join(tags, ","))
-	ch := NewCreate("metascan", ch1, strings.Join(tags, ","), "300")
+	ch := newCreate("metascan", ch1, strings.Join(tags, ","), "300")
 	err := d.add(ch)
 	if err != nil {
 		return fmt.Errorf("failed to add check %v", err)
@@ -185,13 +192,14 @@ func GenTemplate(tags []string, Age time.Duration, tplate string) error {
 	return nil
 }
 
+// DynTemplate creates a template for regular ingestion by PRTG
 func (c *Client) DynTemplate(tags []string, Age time.Duration, tplate string) error {
 	d := NewDeviceTemplate(Age, strings.Join(tags, ","))
 
 	tm := NewTagMap()
 	err := c.list(tags, tm)
 	for _, tag := range tags {
-		err := c.GetObjIds(tag, tm)
+		err := c.getObjIds(tag, tm)
 		if err != nil {
 			return fmt.Errorf("%v", err)
 		}

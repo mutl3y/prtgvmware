@@ -20,6 +20,7 @@ import (
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/types"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 )
@@ -61,7 +62,7 @@ var u, _ = url.Parse("https://192.168.0.201/sdk")
 //			}
 //			f := property.Filter{tt.args.searchType: tt.args.searchItem}
 //			lim := &LimitsStruct{}
-//			err = c.VmSummary(f, lim, time.Hour, tt.args.txt)
+//			err = c.VMSummary(f, lim, time.Hour, tt.args.txt)
 //			if (err != nil) && !tt.wantErr {
 //				t.Fatal(err)
 //			}
@@ -100,8 +101,9 @@ func TestClient_vmSummary(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
+			defer func() { _ = c.Logout() }()
 			lim := &LimitsStruct{}
-			err = c.VmSummary(tt.args.searchName, tt.args.searchMoid, lim, time.Hour, tt.args.txt, []string{"cpu.ready.summation"})
+			err = c.VMSummary(tt.args.searchName, tt.args.searchMoid, lim, time.Hour, tt.args.txt, []string{"cpu.ready.summation"})
 			if (err != nil) && !tt.wantErr {
 				t.Fatal(err)
 			}
@@ -215,6 +217,7 @@ func Test_snapshotCount(t *testing.T) {
 }
 
 func Benchmark_snapshotCount(b *testing.B) {
+	ti := time.Now().Truncate(time.Second)
 	type args struct {
 		snp []types.VirtualMachineSnapshotTree
 	}
@@ -238,7 +241,7 @@ func Benchmark_snapshotCount(b *testing.B) {
 				Name:           "test1",
 				Description:    "test-snaphot",
 				Id:             1,
-				CreateTime:     time.Now().Truncate(time.Microsecond),
+				CreateTime:     ti,
 				State:          "poweredOn",
 				Quiesced:       true,
 				BackupManifest: "",
@@ -255,7 +258,7 @@ func Benchmark_snapshotCount(b *testing.B) {
 						Name:              "test2",
 						Description:       "test-sub-hot",
 						Id:                2,
-						CreateTime:        time.Now().Truncate(time.Microsecond),
+						CreateTime:        ti,
 						State:             "poweredOn",
 						Quiesced:          true,
 						BackupManifest:    "",
@@ -273,7 +276,7 @@ func Benchmark_snapshotCount(b *testing.B) {
 						Name:           "test3",
 						Description:    "test-sub-hot",
 						Id:             3,
-						CreateTime:     time.Now().Truncate(time.Microsecond),
+						CreateTime:     ti,
 						State:          "poweredOn",
 						Quiesced:       true,
 						BackupManifest: "",
@@ -290,7 +293,7 @@ func Benchmark_snapshotCount(b *testing.B) {
 								Name:              "test4",
 								Description:       "test-sub-hot",
 								Id:                4,
-								CreateTime:        time.Now().Truncate(time.Microsecond),
+								CreateTime:        ti,
 								State:             "poweredOn",
 								Quiesced:          true,
 								BackupManifest:    "",
@@ -307,9 +310,12 @@ func Benchmark_snapshotCount(b *testing.B) {
 	}
 	for _, tt := range tests {
 		for n := 0; n < b.N; n++ {
-			_, err := snapshotCount(time.Now(), tt.args.snp)
+			got, err := snapshotCount(time.Now(), tt.args.snp)
 			if err != nil {
 				b.Fatalf("failed %v", err)
+			}
+			if got != tt.want {
+				b.Fatalf("value mismatch got %v  wanted %v", got, tt.want)
 			}
 		}
 	}
@@ -343,6 +349,8 @@ func TestSnapShotsOlder(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
+			defer func() { _ = c.Logout() }()
+
 			f := property.Filter{tt.args.searchType: "*" + tt.args.searchItem}
 			lim := &LimitsStruct{}
 
@@ -355,6 +363,45 @@ func TestSnapShotsOlder(t *testing.T) {
 			}
 		})
 
+	}
+}
+func Benchmark_SnapShotsOlder(b *testing.B) {
+	type args struct {
+		searchType, searchItem string
+		usr, pw                string
+		tag                    []string
+		txt                    bool
+	}
+
+	tests := []struct {
+		name    string
+		ur      *url.URL
+		args    args
+		wantErr bool
+	}{
+		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, false}, false},
+	}
+	for _, tt := range tests {
+		wg := sync.WaitGroup{}
+		for n := 0; n < 1000; n++ {
+			wg.Add(1)
+			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw, true)
+			if err != nil {
+				b.Fatalf("%+v", err)
+			}
+			f := property.Filter{tt.args.searchType: "*" + tt.args.searchItem}
+			lim := &LimitsStruct{}
+
+			go func() {
+				defer wg.Done()
+				err = c.SnapShotsOlderThan(f, tt.args.tag, lim, time.Second, tt.args.txt)
+				if (err != nil) && !tt.wantErr {
+					b.Errorf("failed %v", err)
+				}
+			}()
+
+		}
+		wg.Wait()
 	}
 }
 
@@ -389,7 +436,7 @@ func TestSnapShotsOlder(t *testing.T) {
 //				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 //			}
 //
-//			printJson(false, mets)
+//			printJSON(false, mets)
 //		})
 //	}
 //}
@@ -415,14 +462,14 @@ func TestClient_DsSummarys(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
+			defer func() { _ = c.Logout() }()
+
 			err = c.DsSummary(tt.na, tt.moid, &LimitsStruct{}, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DsMetrics() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !c.Cached {
-				_ = c.Logout()
-			}
+
 		})
 	}
 }
@@ -437,17 +484,17 @@ func TestClient_HostSummary(t *testing.T) {
 		//	{"", "", true},
 		//{"fail", "", "datastore-1", true},
 		//{"name", "192.168.0.194", "", false},
-		{"moid", "", "Host-63", false},
+		{"moid", "", "host-12", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := NewClient(u, "testsave", ".l3tm31n", true)
-
-			//	c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n",false)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
+			defer func() { _ = c.Logout() }()
+
 			err = c.HostSummary(tt.na, tt.moid, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("hostsummary() error = %v, wantErr %v", err, tt.wantErr)
@@ -459,14 +506,16 @@ func TestClient_HostSummary(t *testing.T) {
 }
 func TestClient_Metrics(t *testing.T) {
 	tests := []struct {
-		name    string
-		prop    types.ManagedObjectReference
-		wantErr bool
+		name     string
+		prop     types.ManagedObjectReference
+		metrics  []string
+		interval int32
+		wantErr  bool
 	}{
-		//{"", types.ManagedObjectReference{Type:  "VirtualMachine",Value: "vm-16"}, false},
-		//{"", types.ManagedObjectReference{Type: "HostSystem", Value: "Host-12"}, false},
-		//{"ds", types.ManagedObjectReference{Type: "Datastore", Value: "datastore-10"}, false},
-		{"vds", types.ManagedObjectReference{Type: "VmwareDistributedVirtualSwitch", Value: "dvs-19"}, false},
+		{"vm", types.ManagedObjectReference{Type: "VirtualMachine", Value: "vm-16"}, vmSummaryDefault, 20, false},
+		{"host", types.ManagedObjectReference{Type: "HostSystem", Value: "host-12"}, hsSummaryDefault, 20, false},
+		{"ds", types.ManagedObjectReference{Type: "Datastore", Value: "datastore-13"}, dsSummaryDefault, 20, false},
+		{"vds", types.ManagedObjectReference{Type: "VmwareDistributedVirtualSwitch", Value: "dvs-19"}, vdsSummaryDefault, 20, false},
 	}
 
 	for _, tt := range tests {
@@ -476,12 +525,14 @@ func TestClient_Metrics(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
-			pr := NewPrtgData("testing")
-			err = c.MetricS(tt.prop, pr, append(vmSummaryDefault, vdsSummaryDefault...), 20)
+			defer func() { _ = c.Logout() }()
+
+			pr := newPrtgData("testing")
+			err = c.Metrics(tt.prop, pr, tt.metrics, tt.interval)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
 			}
-
+			_ = pr.print(500*time.Microsecond, false)
 		})
 	}
 }
@@ -514,7 +565,9 @@ func TestClient_VdsSummary(t *testing.T) {
 			if err != nil {
 				t.Errorf("failed %v", err)
 			}
-			pr := NewPrtgData("testing")
+			defer func() { _ = c.Logout() }()
+
+			pr := newPrtgData("testing")
 
 			err = c.VdsSummary(tt.args.searchName, tt.args.searchMoid, tt.args.txt)
 			if (err != nil) != tt.wantErr {
@@ -523,12 +576,9 @@ func TestClient_VdsSummary(t *testing.T) {
 
 			for i := range []int{0, 0, 0, 0, 0} {
 				if i <= len(pr.items)-1 {
-					printJson(false, pr.items[i])
+					printJSON(false, pr.items[i])
 				}
 
-			}
-			if !c.Cached {
-				_ = c.Logout()
 			}
 		})
 	}
@@ -588,8 +638,8 @@ func TestClient_VmTracker(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{}
-			if err := c.VmTracker(tt.v, tt.h); (err != nil) != tt.wantErr {
-				t.Errorf("VmTracker() error = %v, wantErr %v", err, tt.wantErr)
+			if err := c.vmTracker(tt.v, tt.h); (err != nil) != tt.wantErr {
+				t.Errorf("vmTracker() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

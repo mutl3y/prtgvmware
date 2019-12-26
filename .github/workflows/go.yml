@@ -3,7 +3,8 @@ name: Build and Release
 on:
   push:
     branches:
-      - v1.0.3
+      - v1.0.4
+    # todo make sure you update this last, triggers build
     tags:
       - Release
 jobs:
@@ -67,7 +68,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           tag_name: ${{ github.ref }}
-          release_name: v1.0.3
+          # todo make sure you update this
+          release_name: v1.0.4
           body: |
             Changes in this Release
             - automated build

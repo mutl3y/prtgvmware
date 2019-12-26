@@ -44,6 +44,8 @@ func TestClient_tagList(t *testing.T) {
 			if err != nil {
 				t.Fatal("cant get client")
 			}
+			defer func() { _ = c.Logout() }()
+
 			gotRtnMap := NewTagMap()
 			err = c.list(tt.tagIds, gotRtnMap)
 			if (err != nil) != tt.wantErr {
@@ -95,7 +97,7 @@ func Test_tagMap_check(t *testing.T) {
 		t.Fatalf("failed to parse url")
 	}
 	tests := []struct {
-		name, objId, tag string
+		name, objID, tag string
 		found, wantErr   bool
 	}{
 		{"1", "vm-19", "PRTG", true, false},
@@ -109,6 +111,7 @@ func Test_tagMap_check(t *testing.T) {
 	if err != nil {
 		t.Fatal("cant get client")
 	}
+	defer func() { _ = c.Logout() }()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -117,6 +120,7 @@ func Test_tagMap_check(t *testing.T) {
 			if (err != nil) && !tt.wantErr {
 				t.Fatalf("taglist error %v", err)
 			}
+
 			if (len(ttagMap.Data) == 0) && !tt.wantErr {
 				t.Fatal("no Data returned")
 			}
@@ -147,7 +151,9 @@ func TestClient_GetVmsOnTags(t *testing.T) {
 			if err != nil {
 				t.Fatal("cant get client")
 			}
-			if err := c.GetObjIds(tt.tag, gotRtnMap); (err != nil) != tt.wantErr {
+			defer func() { _ = c.Logout() }()
+
+			if err := c.getObjIds(tt.tag, gotRtnMap); (err != nil) != tt.wantErr {
 				t.Errorf("GetVmsOnTags() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

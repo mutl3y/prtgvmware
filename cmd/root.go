@@ -29,7 +29,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "prtgvmware",
 	Short:   "VMware sensors for prtg",
-	Version: "v1.0.3",
+	Version: "v1.0.4", //todo make sure you update this
 	Long: `advanced sensors for VMware
 
 this app exposes all the common stats for vm's, Hypervisor's, VDS & Datastore's
@@ -69,7 +69,7 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceP("tags", "t", []string{}, "slice of tags to include")
 	rootCmd.PersistentFlags().DurationP("snapAge", "a", (7*24)*time.Hour, "ignore snapshots younger than")
 	rootCmd.PersistentFlags().BoolP("json", "j", false, "pretty print json version of vmware data")
-	rootCmd.PersistentFlags().BoolP("cachedCreds", "c", true, "disable cached connection")
+	rootCmd.PersistentFlags().BoolP("cachedCreds", "c", true, "enable cached connection")
 
 }
 

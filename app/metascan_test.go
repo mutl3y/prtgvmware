@@ -41,10 +41,11 @@ func TestClient_Metascan(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			ctx, _ = context.WithTimeout(ctx, time.Second)
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
 			if err != nil {
 				t.Fatal("cant get client")
 			}
+			defer func() { _ = c.Logout() }()
 
 			gotRtnMap := NewTagMap()
 			if err := c.Metascan(tt.tags, gotRtnMap, time.Minute); (err != nil) != tt.wantErr {
@@ -79,6 +80,7 @@ func TestClient_getObjType(t *testing.T) {
 			if err != nil {
 				t.Fatal("cant get client")
 			}
+			defer func() { _ = c.Logout() }()
 
 			moi := newMoidNames(&c)
 			na := moi.GetName(tt.moid)

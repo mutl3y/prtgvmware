@@ -35,13 +35,13 @@ func TestClient_Save2Disk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
-			//		defer c.Logout()  // if this isn't commented out then live tests wont work for TestNewClientFromDisk
-			if err := c.Save2Disk(tt.fn, ".l3tm31n"); (err != nil) != tt.wantErr {
-				t.Errorf("Save2Disk() error = %v, wantErr %v", err, tt.wantErr)
+			defer func() { _ = c.Logout() }()
+			if err := c.save2Disk(tt.fn, ".l3tm31n"); (err != nil) != tt.wantErr {
+				t.Errorf("save2Disk() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -61,9 +61,9 @@ func TestNewClientFromDisk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewClientFromDisk(tt.fn, ".l3tm31n", u)
+			_, err := clientFromDisk(tt.fn, ".l3tm31n", u)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewClientFromDisk() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("clientFromDisk() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
