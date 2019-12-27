@@ -159,7 +159,8 @@ func clientFromDisk(fn, password string, u *url.URL) (c Client, err error) {
 	if err != nil {
 		return Client{}, fmt.Errorf("read api cookie error: %v", err)
 	}
-	if c.c.URL() != u {
+	if c.c.URL().Host != u.Host {
+		c.Cached = false
 		return Client{}, fmt.Errorf("url mismatch, logging back in")
 	}
 

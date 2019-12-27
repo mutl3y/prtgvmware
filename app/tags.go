@@ -210,7 +210,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 			}
 			rtnData = append(rtnData, d...)
 		}
-
+	case "StoragePod":
 	default:
 		printJSON(false, "getChildIds, missed type, Please log an issue on Github", id.Type)
 		return nil, nil

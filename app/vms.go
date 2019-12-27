@@ -662,9 +662,9 @@ func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []s
 					continue
 				}
 			}
-			if instance == "" {
-				instance = "-"
-			}
+			//if instance == "" {
+			//	instance = "-"
+			//}
 
 			units := counter.UnitInfo.GetElementDescription().Label
 
