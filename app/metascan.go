@@ -81,13 +81,12 @@ func (m *moidNames) Gettype(moid string) string {
 func (c *Client) getmanagedObjectMap() (mobj map[string]managedObject, err error) {
 	ctx := context.Background()
 	m := view.NewManager(c.c)
-	defer func() { _, _ = m.Destroy(ctx) }()
 
 	v, err := m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"ManagedEntity"}, true)
 	if err != nil {
 		return
 	}
-	defer func() { _ = v.Destroy(ctx) }()
+	defer func(ctx context.Context) { _ = v.Destroy(ctx) }(ctx)
 
 	any := []string{"ManagedEntity"}
 	var objs []mo.ManagedEntity

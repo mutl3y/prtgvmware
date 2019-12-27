@@ -50,7 +50,7 @@ func NewClient(u *url.URL, user, pw string, cache bool) (c Client, err error) {
 
 	// load from cache if enabled, will fall through to login code if there are any issues
 	if cache {
-		c, err := clientFromDisk("cookie", pw, u)
+		c, err := clientFromDisk(u.Host, pw, u)
 		if err == nil {
 			c.Cached = true
 			return c, nil
@@ -98,7 +98,7 @@ func NewClient(u *url.URL, user, pw string, cache bool) (c Client, err error) {
 	c.m = view.NewManager(c.c)
 	c.ctx = ctx
 	if cache {
-		err := c.save2Disk("cookie", pw)
+		err := c.save2Disk(u.Host, pw)
 		if err != nil {
 			return c, fmt.Errorf("failed to save cached creds to disk")
 		}
@@ -159,6 +159,10 @@ func clientFromDisk(fn, password string, u *url.URL) (c Client, err error) {
 	if err != nil {
 		return Client{}, fmt.Errorf("read api cookie error: %v", err)
 	}
+	if c.c.URL() != u {
+		return Client{}, fmt.Errorf("url mismatch, logging back in")
+	}
+
 	if !c.c.Valid() {
 		return
 	}
@@ -182,6 +186,7 @@ func clientFromDisk(fn, password string, u *url.URL) (c Client, err error) {
 	if err != nil {
 		return Client{}, fmt.Errorf("read rest cookie error: %v", err)
 	}
+
 	c.ctx = ctx
 	c.m = view.NewManager(c.c)
 	return c, nil

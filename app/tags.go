@@ -81,6 +81,9 @@ func (c *Client) list(tagIds []string, tm *TagMap) (err error) {
 
 	for _, tag := range tagIds {
 		err = c.getObjIds(tag, tm)
+		if err != nil {
+			return err
+		}
 	}
 
 	return
@@ -96,6 +99,7 @@ func (c *Client) getObjIds(tag string, tm *TagMap) (err error) {
 	workingData := make([]types.ManagedObjectReference, 0, 10)
 
 	objs, err := manager.GetAttachedObjectsOnTags(ctx, []string{tag})
+
 	if err != nil {
 		if strings.Contains(err.Error(), "404 Not Found") {
 			return nil

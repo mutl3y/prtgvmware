@@ -55,9 +55,9 @@ var metascanCmd = &cobra.Command{
 			app.SensorWarn(err, true)
 			return
 		}
-		if !c.Cached {
-			_ = c.Logout()
-		}
+
+		_ = c.Logout()
+
 	},
 }
 
