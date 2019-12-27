@@ -69,7 +69,7 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           # todo make sure you update this
-          release_name: v1.0.4
+          release_name: v1.0.5
           body: |
             Changes in this Release
             - automated build

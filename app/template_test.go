@@ -45,7 +45,7 @@ func TestClient_DynTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Errorf("failed %v", err)
 			}

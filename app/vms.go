@@ -216,9 +216,6 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	}
 	defer func() { _ = v.Destroy(ctx) }()
 
-	//var vms2 []mo.VirtualMachine
-	//	kind := []string{"VirtualMachine"}
-	//vms := make([]mo.VirtualMachine, 0, 100)
 	id := types.ManagedObjectReference{
 		Type: "VirtualMachine", Value: moid,
 	}
@@ -235,26 +232,7 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	if err != nil {
 		return fmt.Errorf("v.properties %v", err)
 	}
-	//if len(vms) != 1 {
-	//
-	//	type vmFailList struct {
-	//		name, moid string
-	//	}
-	//	out := make([]vmFailList, 0, 10)
-	//	for _, v := range vms {
-	//		out = append(out, vmFailList{v.Name, v.Self.Value})
-	//
-	//	}
-	//
-	//	return fmt.Errorf("expected a single vm, got %+v", out)
-	//}
 
-	//	v0 := vms[0]
-	//printJSON(false,item)
-	//vm, mets, err := c.vmMetricS(v0.Reference())
-	//if err != nil {
-	//	return fmt.Errorf("metrics %v", err)
-	//}
 	elapsed := time.Since(start)
 
 	var co int
@@ -267,11 +245,6 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	pr := newPrtgData(v0.Name)
 	pr.moid = id.Value
 	_ = pr.add(co, ps.SensorChannel{Channel: fmt.Sprintf("Snapshots Older Than %v", age), Unit: "Custom", CustomUnit: "Found", LimitErrorMsg: lim.ErrMsg, LimitMaxError: lim.MaxErr, LimitMaxWarning: lim.MaxWarn, LimitWarningMsg: lim.WarnMsg})
-
-	//	guestLimits := &LimitsStruct{
-	//		MinErr: 0.5,
-	//		ErrMsg: "tools not running",
-	//	}
 
 	gt := ps.SensorChannel{Channel: "guest tools running", Unit: "Custom", ValueLookup: "prtg.standardlookups.exchangedag.yesno.allstatesok"}
 	var gtv int
@@ -295,21 +268,6 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	if err != nil {
 		return err
 	}
-	//for _, v := range mets {
-	//	if inStringSlice(v.Channel, vmSummaryDefault) {
-	//		st, err := singleStat(v.Value)
-	//		if err != nil {
-	//			return err
-	//		}
-	//
-	//		if st != "" {
-	//			err = pr.add(st, v)
-	//			if err != nil {
-	//				return err
-	//			}
-	//		}
-	//	}
-	//}
 	for _, v := range v0.Guest.Disk {
 		d := v.DiskPath
 		ca := v.Capacity
@@ -318,6 +276,10 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 		perc := free / one
 		_ = pr.add(free/1000, ps.SensorChannel{Channel: "free Bytes " + d, Unit: "BytesDisk", VolumeSize: "KiloByte", ShowChart: "0", ShowTable: "0"})
 		_ = pr.add(perc, ps.SensorChannel{Channel: "free Space (Percent) " + d, Unit: "Percent", LimitMinWarning: "20", LimitMinError: "10", LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space"})
+	}
+	err = c.Metrics(v0.Reference(), pr, vmSummaryDefault, 20)
+	if err != nil {
+		return err
 	}
 	err = pr.print(elapsed, txt)
 	_ = c.vmTracker(v0.Name, hs.Name)
@@ -569,6 +531,7 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	_ = pr.print(elapsed, js)
 	return
 }
+
 func (c *Client) GetMaxQueryMetrics(ctx context.Context) (int, error) {
 
 	om := object.NewOptionManager(c.c, *c.c.ServiceContent.Setting)
@@ -596,10 +559,8 @@ func (c *Client) GetMaxQueryMetrics(ctx context.Context) (int, error) {
 	ver := c.c.ServiceContent.About.Version
 	parts := strings.Split(ver, ".")
 	if len(parts) < 2 {
-		fmt.Printf("vCenter returned an invalid version string: %s. Using default query size=64", ver)
 		return 64, nil
 	}
-	fmt.Printf("vCenter version is: %s", ver)
 	major, err := strconv.Atoi(parts[0])
 	if err != nil {
 		return 0, err

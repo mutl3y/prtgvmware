@@ -18,16 +18,11 @@ package app
 
 import (
 	"context"
-	"net/url"
 	"testing"
 	"time"
 )
 
 func TestClient_Metascan(t *testing.T) {
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
 
 	tests := []struct {
 		name string
@@ -41,7 +36,7 @@ func TestClient_Metascan(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			ctx, _ = context.WithTimeout(ctx, time.Second)
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatal("cant get client")
 			}
@@ -60,10 +55,6 @@ func TestClient_Metascan(t *testing.T) {
 }
 
 func TestClient_getObjType(t *testing.T) {
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
 
 	tests := []struct {
 		name string
@@ -71,12 +62,12 @@ func TestClient_getObjType(t *testing.T) {
 
 		wantErr bool
 	}{
-		{"ad", "vm-16", false},
+		{"", "vm-1087", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatal("cant get client")
 			}

@@ -17,15 +17,11 @@
 package app
 
 import (
-	"net/url"
 	"testing"
 )
 
 func TestClient_Save2Disk(t *testing.T) {
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
+
 	tests := []struct {
 		name    string
 		fn      string
@@ -35,7 +31,7 @@ func TestClient_Save2Disk(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
@@ -48,10 +44,6 @@ func TestClient_Save2Disk(t *testing.T) {
 }
 
 func TestNewClientFromDisk(t *testing.T) {
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
 	tests := []struct {
 		name    string
 		fn      string

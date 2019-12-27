@@ -20,55 +20,16 @@ import (
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/types"
 	"net/url"
+	"os"
 	"sync"
 	"testing"
 	"time"
 )
 
-var u, _ = url.Parse("https://192.168.0.201/sdk")
-
-//func TestClient_vmSummary(t *testing.T) {
-//	type args struct {
-//		searchType, searchItem string
-//		usr, pw                string
-//		txt                    bool
-//	}
-//	u, err := url.Parse("https://192.168.0.201/sdk")
-//	if err != nil {
-//		t.Fatalf("failed to parse url")
-//	}
-//
-//	tests := []struct {
-//		name    string
-//		ur      *url.URL
-//		args    args
-//		wantErr bool
-//	}{
-//		{"1", &url.URL{}, args{"name", "*1", "", "", false}, false},
-//		{"2", &url.URL{}, args{"self", "*vm-30", "", "", false}, false},
-//		{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
-//		//{"4", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
-//		//{"5", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
-//		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
-//		{"5", u, args{"name", "vcenter", "prtg@heynes.local", ".l3tm31n", false}, false},
-//		//{"6", u, args{"tags", "windows", "ps@heynes.local", ".l3tm31n", true}, false},
-//	}
-//	//	debug = true
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw)
-//			if err != nil {
-//				t.Errorf("%+v", err)
-//			}
-//			f := property.Filter{tt.args.searchType: tt.args.searchItem}
-//			lim := &LimitsStruct{}
-//			err = c.VMSummary(f, lim, time.Hour, tt.args.txt)
-//			if (err != nil) && !tt.wantErr {
-//				t.Fatal(err)
-//			}
-//		})
-//	}
-//}
+var u, _ = url.Parse(os.Getenv("vmurl"))
+var user = os.Getenv("vmuser")
+var passwd = os.Getenv("vmpass")
+var timestamp = time.Now().Truncate(time.Hour)
 
 func TestClient_vmSummary(t *testing.T) {
 	type args struct {
@@ -79,25 +40,16 @@ func TestClient_vmSummary(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		ur      *url.URL
 		args    args
 		wantErr bool
 	}{
-		//{"1", &url.URL{}, args{"name", "*1", "", "", false}, false},
-		//{"2", &url.URL{}, args{"self", "*vm-30", "", "", false}, false},
-		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
-		////{"4", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
-		////{"5", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
-		//{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"6", u, args{"ad", "", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"5", u, args{"vcenter", "", "prtg@heynes.local", ".l3tm31n", false}, false},
-
-		//{"6", u, args{"tags", "windows", "ps@heynes.local", ".l3tm31n", true}, false},
+		{"", args{"unknown", "", user, passwd, false}, true},
+		{"", args{"mh-cache", "", user, passwd, false}, false},
 	}
 	//	debug = true
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(tt.ur, tt.args.usr, tt.args.pw, true)
+			c, err := NewClient(u, tt.args.usr, tt.args.pw, true)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -112,6 +64,7 @@ func TestClient_vmSummary(t *testing.T) {
 }
 
 func Test_snapshotCount(t *testing.T) {
+
 	type args struct {
 		snp []types.VirtualMachineSnapshotTree
 	}
@@ -135,7 +88,7 @@ func Test_snapshotCount(t *testing.T) {
 				Name:           "test1",
 				Description:    "test-snaphot",
 				Id:             1,
-				CreateTime:     time.Now().Truncate(time.Microsecond),
+				CreateTime:     timestamp,
 				State:          "poweredOn",
 				Quiesced:       true,
 				BackupManifest: "",
@@ -152,7 +105,7 @@ func Test_snapshotCount(t *testing.T) {
 						Name:              "test2",
 						Description:       "test-sub-hot",
 						Id:                2,
-						CreateTime:        time.Now().Truncate(time.Microsecond),
+						CreateTime:        timestamp,
 						State:             "poweredOn",
 						Quiesced:          true,
 						BackupManifest:    "",
@@ -170,7 +123,7 @@ func Test_snapshotCount(t *testing.T) {
 						Name:           "test3",
 						Description:    "test-sub-hot",
 						Id:             3,
-						CreateTime:     time.Now().Truncate(time.Microsecond),
+						CreateTime:     timestamp,
 						State:          "poweredOn",
 						Quiesced:       true,
 						BackupManifest: "",
@@ -187,7 +140,7 @@ func Test_snapshotCount(t *testing.T) {
 								Name:              "test4",
 								Description:       "test-sub-hot",
 								Id:                4,
-								CreateTime:        time.Now().Truncate(time.Microsecond),
+								CreateTime:        timestamp,
 								State:             "poweredOn",
 								Quiesced:          true,
 								BackupManifest:    "",
@@ -334,13 +287,8 @@ func TestSnapShotsOlder(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		//{"1", &url.URL{}, args{"name", "1", "", "", false}, false},
-		//{"2", &url.URL{}, args{"self", "vm-27", "", "", false}, false},
-		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
-		//{"4", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
-		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, false}, false},
-		{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windowsx"}, false}, true},
-		//{"7", u, args{"tags", "windows", "ps@heynes.local", ".l3tm31n", true}, false},
+		{"5", u, args{"name", "mh-cache", user, passwd, []string{"windows", "PRTG"}, false}, false},
+		{"6", u, args{"name", "mh-cache", user, passwd, []string{"windowsx"}, false}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -379,7 +327,7 @@ func Benchmark_SnapShotsOlder(b *testing.B) {
 		args    args
 		wantErr bool
 	}{
-		{"5", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, false}, false},
+		{"5", u, args{"name", "mh-cache", "prtg@heynes.local", ".l3tm31n", []string{"windows", "PRTG"}, false}, false},
 	}
 	for _, tt := range tests {
 		wg := sync.WaitGroup{}
@@ -411,7 +359,7 @@ func Benchmark_SnapShotsOlder(b *testing.B) {
 //		prop    property.Filter
 //		wantErr bool
 //	}{
-//		{"", property.Filter{"name": "ad"}, false},
+//		{"", property.Filter{"name": "mh-cache"}, false},
 //		//{"", property.Filter{"self": "*"}, true},
 //		//{"", property.Filter{"self": "*"}, true},
 //		//{"", property.Filter{"name": "*2"}, true},
@@ -449,16 +397,14 @@ func TestClient_DsSummarys(t *testing.T) {
 		moid    string
 		wantErr bool
 	}{
-		//	{"", "", true},
 		{"fail", "", "datastore-1", true},
-		{"name", "raid5", "", false},
-		//{"moid", "", "datastore-10", false},
+		{"name", "", "datastore-12", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
@@ -481,15 +427,12 @@ func TestClient_HostSummary(t *testing.T) {
 		moid    string
 		wantErr bool
 	}{
-		//	{"", "", true},
-		//{"fail", "", "datastore-1", true},
-		//{"name", "192.168.0.194", "", false},
-		{"moid", "", "host-12", false},
+		{"moid", "", "host-540", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(u, "testsave", ".l3tm31n", true)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
@@ -512,16 +455,16 @@ func TestClient_Metrics(t *testing.T) {
 		interval int32
 		wantErr  bool
 	}{
-		{"vm", types.ManagedObjectReference{Type: "VirtualMachine", Value: "vm-16"}, vmSummaryDefault, 20, false},
-		{"host", types.ManagedObjectReference{Type: "HostSystem", Value: "host-12"}, hsSummaryDefault, 20, false},
-		{"ds", types.ManagedObjectReference{Type: "Datastore", Value: "datastore-13"}, dsSummaryDefault, 20, false},
-		{"vds", types.ManagedObjectReference{Type: "VmwareDistributedVirtualSwitch", Value: "dvs-19"}, vdsSummaryDefault, 20, false},
+		{"vm", types.ManagedObjectReference{Type: "VirtualMachine", Value: "vm-1087"}, vmSummaryDefault, 20, false},
+		{"host", types.ManagedObjectReference{Type: "HostSystem", Value: "host-540"}, hsSummaryDefault, 20, false},
+		{"ds", types.ManagedObjectReference{Type: "Datastore", Value: "datastore-12"}, dsSummaryDefault, 20, false},
+		{"vds", types.ManagedObjectReference{Type: "VmwareDistributedVirtualSwitch", Value: "dvs-75"}, vdsSummaryDefault, 20, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
@@ -540,7 +483,6 @@ func TestClient_Metrics(t *testing.T) {
 func TestClient_VdsSummary(t *testing.T) {
 	type args struct {
 		searchName, searchMoid string
-		usr, pw                string
 		txt                    bool
 	}
 
@@ -550,18 +492,12 @@ func TestClient_VdsSummary(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		//{"1", &url.URL{}, args{"name", "*1", "", "", false}, false},
-		//{"2", &url.URL{}, args{"self", "*vm-30", "", "", false}, false},
-		//{"3", &url.URL{}, args{"name", "me", "", "", false}, true},
-		////{"4", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
-		////{"5", u, args{"name", "vcenter", "ps@heynes.local", ".l3tm31n", true}, false},
-		//{"6", u, args{"name", "ad", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"6", u, args{"DSwitch", "", "prtg@heynes.local", ".l3tm31n", false}, false},
-		{"7", u, args{"", "dvs-19", "prtg@heynes.local", ".l3tm31n", false}, false},
+		{"", u, args{"DSwitch", "", false}, false},
+		{"", u, args{"", "dvs-75", false}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", false)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Errorf("failed %v", err)
 			}
@@ -631,7 +567,7 @@ func TestClient_VmTracker(t *testing.T) {
 		wantErr bool
 	}{
 		{"", "vcenter", "192.168.0.1", false},
-		{"", "ad", "192.168.0.1", false},
+		{"", "mh-cache", "192.168.0.1", false},
 		{"", "testServer", "192.168.0.1", false},
 		{"", "testServer", "192.168.0.1", false},
 	}
