@@ -16,7 +16,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/mutl3y/prtgvmware/app"
 	"github.com/spf13/cobra"
 )
@@ -49,7 +48,7 @@ var vdsSummaryCmd = &cobra.Command{
 		}
 		err = c.VdsSummary(name, oid, js)
 		if err != nil {
-			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
+			app.SensorWarn(err, true)
 
 		}
 		if !c.Cached {

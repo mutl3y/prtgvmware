@@ -160,8 +160,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.VirtualApp
 		err = v.Properties(ctx, id, []string{"vm", "datastore", "network"}, &wd)
 		if err != nil {
-			err = fmt.Errorf("vapp Properties %v", err)
-			return nil, err
+			return nil, errCheck("", id, fmt.Errorf("vapp v.properties %v", err))
 		}
 
 		rtnData = append(rtnData, wd.Vm...)
@@ -172,8 +171,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.ClusterComputeResource
 		err = v.Properties(ctx, id, []string{"network", "host", "datastore"}, &wd)
 		if err != nil {
-			err = fmt.Errorf("cluster Properties %v", err)
-			return nil, err
+			return nil, errCheck("cluster", id, fmt.Errorf("cluster v.properties %v", err))
 		}
 		rtnData = append(rtnData, wd.Network...)
 		rtnData = append(rtnData, wd.Host...)
@@ -183,8 +181,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.Datacenter
 		err = v.Properties(ctx, id, []string{"hostFolder", "datastoreFolder", "networkFolder"}, &wd)
 		if err != nil {
-			err = fmt.Errorf("ds Properties %v", err)
-			return nil, err
+			return nil, errCheck("ds", id, fmt.Errorf("ds v.properties %v", err))
 		}
 		x := make([]types.ManagedObjectReference, 0, 3)
 
@@ -200,8 +197,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.Folder
 		err = v.Properties(ctx, id, []string{"childType", "childEntity"}, &wd)
 		if err != nil {
-			err = fmt.Errorf("folder properties %v", err)
-			return nil, err
+			return nil, errCheck("folder", id, fmt.Errorf("folder v.properties %v", err))
 		}
 		for _, id := range wd.ChildEntity {
 			d, err := c.getChildIds(id)

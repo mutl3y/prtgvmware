@@ -59,8 +59,7 @@ func NewClient(u *url.URL, user, pw string, cache bool) (c Client, err error) {
 
 	ctx := context.Background()
 	if u.Host == "" {
-		fmt.Println(os.Args)
-		return Client{}, fmt.Errorf("need to provide a url")
+		return Client{}, fmt.Errorf("you need to provide a url, I.E https://vcenter/sdk")
 	}
 
 	u.User = url.UserPassword(user, pw)

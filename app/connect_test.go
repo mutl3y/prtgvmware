@@ -33,7 +33,7 @@ func TestClient_Save2Disk(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
-				t.Fatalf("failed %v", err)
+				t.Fatalf(" %v", err)
 			}
 			defer func() { _ = c.Logout() }()
 			if err := c.save2Disk(tt.fn, ".l3tm31n"); (err != nil) != tt.wantErr {

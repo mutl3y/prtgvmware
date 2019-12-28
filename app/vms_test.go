@@ -30,10 +30,16 @@ var u, _ = url.Parse(os.Getenv("vmurl"))
 var user = os.Getenv("vmuser")
 var passwd = os.Getenv("vmpass")
 var timestamp = time.Now().Truncate(time.Hour)
-var vmmoid = "vm-1087"
-var dsmoid = "datastore-12"
-var hsmoid = "host-540"
-var vdsmoid = "dvs-75"
+
+//var vmmoid = "vm-1087"
+//var dsmoid = "datastore-12"
+//var hsmoid = "host-540"
+//var vdsmoid = "dvs-75"
+
+var vmmoid = "vm-16"
+var dsmoid = "datastore-13"
+var hsmoid = "host-12"
+var vdsmoid = "dvs-19"
 
 func TestClient_Metrics(t *testing.T) {
 	tests := []struct {
@@ -148,7 +154,7 @@ func TestClient_HostSummary(t *testing.T) {
 			}
 			defer func() { _ = c.Logout() }()
 
-			err = c.HostSummary(tt.na, tt.moid, false)
+			err = c.HostSummary(tt.na, tt.moid, true)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("hostsummary() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -176,7 +182,7 @@ func TestClient_VdsSummary(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
-				t.Errorf("failed %v", err)
+				t.Fatalf("failed %v", err)
 			}
 			defer func() { _ = c.Logout() }()
 

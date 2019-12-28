@@ -57,7 +57,7 @@ queries host summary & metrics and outputs in PRTG format
 		}
 		err = c.HostSummary(name, oid, js)
 		if err != nil {
-			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
+			app.SensorWarn(err, true)
 
 		}
 		if !c.Cached {

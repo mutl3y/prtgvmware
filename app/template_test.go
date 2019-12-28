@@ -47,7 +47,7 @@ func TestClient_DynTemplate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
-				t.Errorf("failed %v", err)
+				t.Fatalf("failed %v", err)
 			}
 			defer func() { _ = c.Logout() }()
 
@@ -55,6 +55,7 @@ func TestClient_DynTemplate(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
+			c.Logout()
 		})
 	}
 }

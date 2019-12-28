@@ -30,9 +30,9 @@ for windows place in the customsensosrs\exexml folder
 **Make sure to download files from the latest release.**
 
 ## Actions
-auto building of releases is was broken as some recent features of the govmomi vmware module are required that are not in the current release
+auto building of releases was broken as some recent features of the govmomi vmware module are required that are not in the current release
 
-I have included vendored packages that have been updated should you build this for yourself 
+I have included vendored packages that have been updated should you wish to build this for yourself 
 
 ## Generate documentation 
 ```prtgvmware.exe GenDoc```
