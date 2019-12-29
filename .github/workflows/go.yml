@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     branches:
-      - v1.0.6
+      - v1.0.5
     # todo make sure you update this last, triggers build
     tags:
       - Release
@@ -69,12 +69,12 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           # todo make sure you update this
-          release_name: ${{ on.push.branches }}
+          release_name: v.1.0.6
           body: |
             Changes in this Release
             - automated build
             draft: false
-            prerelease: true
+            prerelease: false
 
       - name: Download artifact
         uses: actions/download-artifact@v1
