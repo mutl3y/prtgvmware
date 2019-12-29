@@ -111,7 +111,7 @@ func (c *Client) Metascan(tags []string, tm *TagMap, Age time.Duration) (err err
 	for _, tag := range tags {
 		err := c.getObjIds(tag, tm)
 		if err != nil {
-			return fmt.Errorf("getObjIds %v", err)
+			return err
 		}
 	}
 	moidNames := newMoidNames(c)

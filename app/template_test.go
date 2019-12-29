@@ -55,7 +55,7 @@ func TestClient_DynTemplate(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed %v", err)
 			}
-			c.Logout()
+			_ = c.Logout()
 		})
 	}
 }

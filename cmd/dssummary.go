@@ -46,6 +46,13 @@ queries datastore summary metrics and outputs in PRTG format
 			app.SensorWarn(err, true)
 			return
 		}
+		if lim.MinWarn < "20" {
+			lim.MinWarn = "20"
+		}
+		if lim.MinErr < "10" {
+			lim.MinErr = "20"
+		}
+
 		name, err := flags.GetString("name")
 		if err != nil {
 			app.SensorWarn(err, true)

@@ -99,12 +99,14 @@ func (c *Client) getObjIds(tag string, tm *TagMap) (err error) {
 	workingData := make([]types.ManagedObjectReference, 0, 10)
 
 	objs, err := manager.GetAttachedObjectsOnTags(ctx, []string{tag})
-
 	if err != nil {
 		if strings.Contains(err.Error(), "404 Not Found") {
 			return nil
 		}
-		return fmt.Errorf("getObjIds issue %v", err)
+		if !strings.Contains(err.Error(), "500 Server Error") {
+			return fmt.Errorf("error listing tags, server error, check vpxd.log\n%v", err)
+		}
+		return fmt.Errorf("GetAttachedObjectsOnTags %v", err)
 	}
 
 	if len(objs) == 0 {
@@ -206,7 +208,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 			}
 			rtnData = append(rtnData, d...)
 		}
-	case "StoragePod":
+	case "StoragePod", "Network":
 	default:
 		printJSON(false, "getChildIds, missed type, Please log an issue on Github", id.Type)
 		return nil, nil

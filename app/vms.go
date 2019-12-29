@@ -263,11 +263,6 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 		return fmt.Errorf("hostsystem properties failure %v", err)
 	}
 
-	pr.text = "OK running on Host " + hs.Name
-	err = c.Metrics(v0.Reference(), pr, vmSummaryDefault, 20)
-	if err != nil {
-		return err
-	}
 	for _, v := range v0.Guest.Disk {
 		d := v.DiskPath
 		ca := v.Capacity
@@ -277,10 +272,16 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 		_ = pr.add(free/1000, ps.SensorChannel{Channel: "free Bytes " + d, Unit: "BytesDisk", VolumeSize: "KiloByte", ShowChart: "0", ShowTable: "0"})
 		_ = pr.add(perc, ps.SensorChannel{Channel: "free Space (Percent) " + d, Unit: "Percent", LimitMinWarning: "20", LimitMinError: "10", LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space", LimitMode: "1"})
 	}
-	err = c.Metrics(v0.Reference(), pr, vmSummaryDefault, 20)
-	if err != nil {
-		return err
+	if v0.Runtime.PowerState == "poweredOn" {
+		pr.text = "OK running on Host " + hs.Name
+		err = c.Metrics(v0.Reference(), pr, vmSummaryDefault, 20)
+		if err != nil {
+			return err
+		}
+	} else {
+		pr.text = fmt.Sprint(v0.Runtime.PowerState)
 	}
+
 	err = pr.print(elapsed, txt)
 	_ = c.vmTracker(v0.Name, hs.Name)
 	return err
@@ -397,7 +398,7 @@ func (c *Client) DsSummary(name, moid string, lim *LimitsStruct, js bool) (err e
 	if p1 > 0 {
 		freep := free / p1
 		provisioned := 100 - freep
-		_ = pr.add(freep, ps.SensorChannel{Channel: "Free space (Percent)", Unit: "Percent", DecimalMode: "1", LimitMinWarning: "20", LimitMinError: "10", LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space", LimitMode: "1"})
+		_ = pr.add(freep, ps.SensorChannel{Channel: "Free space (Percent)", Unit: "Percent", DecimalMode: "1", LimitMinWarning: lim.MinWarn, LimitMinError: lim.MinErr, LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space", LimitMode: "1"})
 		_ = pr.add(provisioned, ps.SensorChannel{Channel: "Used Space (Percent)", Unit: "Percent", DecimalMode: "1"})
 
 	}
@@ -467,7 +468,7 @@ func (c *Client) VdsSummary(name, moid string, js bool) (err error) {
 	return
 }
 
-//HostSummary  stats for a hostsystem
+//HostSummary  stats for a host system
 func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	start := time.Now()
 
@@ -504,12 +505,10 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 		_ = pr.add(1, ps1)
 		_ = pr.print(time.Since(start), false)
 		return
-	case "unknown":
+	default:
 		_ = pr.add(2, ps1)
 		_ = pr.print(time.Since(start), false)
 		return
-	default:
-		printJSON(false, hs.Runtime.PowerState)
 	}
 
 	elapsed := time.Since(start)
@@ -534,10 +533,8 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	_ = pr.add(boolToInt(hs.Runtime.InMaintenanceMode), ps.SensorChannel{Channel: "Maintenance Mode", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok"})
 	_ = pr.add(triggeredAlarms(hs.TriggeredAlarmState), ps.SensorChannel{Channel: "Triggered Alarms", Unit: "Count", LimitMaxWarning: "1", LimitWarningMsg: "triggered alarms present"})
 
-	err = c.Metrics(id, pr, hsSummaryDefault, 20)
-	if err != nil {
-		return
-	}
+	pr.text = fmt.Sprint(hs.Runtime.PowerState)
+
 	_ = pr.print(elapsed, js)
 	return
 }
@@ -792,8 +789,6 @@ func metType(u, s string) (unit, size, customUnit string) {
 		default:
 			unit = "Custom"
 			customUnit = s
-			printJSON(false, "missed KBps type", s)
-
 		}
 	case "MHz":
 		unit = Custom
@@ -808,8 +803,6 @@ func metType(u, s string) (unit, size, customUnit string) {
 		customUnit = "Watt"
 	default:
 		size = u
-		printJSON(false, u)
-
 	}
 
 	return
