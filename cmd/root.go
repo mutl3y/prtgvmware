@@ -1,5 +1,4 @@
-/*
- * Copyright © 2019.  mutl3y
+/* Copyright © 2019.  mutl3y
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +28,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "prtgvmware",
 	Short:   "VMware sensors for prtg",
-	Version: "v1.0.4", //todo make sure you update this
+	Version: "v1.0.5", //todo make sure you update this
 	Long: `advanced sensors for VMware
 
 this app exposes all the common stats for vm's, Hypervisor's, VDS & Datastore's
@@ -69,7 +68,7 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceP("tags", "t", []string{}, "slice of tags to include")
 	rootCmd.PersistentFlags().DurationP("snapAge", "a", (7*24)*time.Hour, "ignore snapshots younger than")
 	rootCmd.PersistentFlags().BoolP("json", "j", false, "pretty print json version of vmware data")
-	rootCmd.PersistentFlags().BoolP("cachedCreds", "c", true, "enable cached connection")
+	rootCmd.PersistentFlags().BoolP("cachedCreds", "c", false, "disable cached connection")
 
 }
 
@@ -101,21 +100,21 @@ func init() {
 //}
 
 var (
-	WarnMsg string
-	ErrMsg  string
+	warnMsg string
+	errMsg  string
 	MinWarn float64
-	MaxWarn float64
+	maxWarn float64
 	MinErr  float64
-	MaxErr  float64
+	maxErr  float64
 )
 
 func limitStruct(flags *pflag.FlagSet) (lim app.LimitsStruct, err error) {
 
-	WarnMsg, err = flags.GetString("msgWarn")
+	warnMsg, err = flags.GetString("msgWarn")
 	if err != nil {
 		return
 	}
-	ErrMsg, err = flags.GetString("msgError")
+	errMsg, err = flags.GetString("msgError")
 	if err != nil {
 		return
 	}
@@ -123,7 +122,7 @@ func limitStruct(flags *pflag.FlagSet) (lim app.LimitsStruct, err error) {
 	//if err != nil {
 	//	return
 	//}
-	MaxWarn, err = flags.GetFloat64("maxWarn")
+	maxWarn, err = flags.GetFloat64("maxWarn")
 	if err != nil {
 		return
 	}
@@ -131,17 +130,17 @@ func limitStruct(flags *pflag.FlagSet) (lim app.LimitsStruct, err error) {
 	//if err != nil {
 	//	return
 	//}
-	MaxErr, err = flags.GetFloat64("maxErr")
+	maxErr, err = flags.GetFloat64("maxErr")
 	if err != nil {
 		return
 	}
 	lim = app.LimitsStruct{
 		MinWarn: fmt.Sprintf("%v", MinWarn),
-		MaxWarn: fmt.Sprintf("%v", MaxWarn),
-		WarnMsg: WarnMsg,
+		MaxWarn: fmt.Sprintf("%v", maxWarn),
+		WarnMsg: warnMsg,
 		MinErr:  fmt.Sprintf("%v", MinErr),
-		MaxErr:  fmt.Sprintf("%v", MaxErr),
-		ErrMsg:  ErrMsg,
+		MaxErr:  fmt.Sprintf("%v", maxErr),
+		ErrMsg:  errMsg,
 	}
 	return lim, nil
 }
@@ -166,7 +165,7 @@ func login(flags *pflag.FlagSet) (c app.Client, err error) {
 		return
 	}
 	u, _ = u.Parse(urls)
-	c, err = app.NewClient(u, user, pww, useCached)
+	c, err = app.NewClient(u, user, pww, !useCached)
 	if err != nil {
 		return
 	}

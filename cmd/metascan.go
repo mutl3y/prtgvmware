@@ -1,5 +1,4 @@
-/*
- * Copyright © 2019.  mutl3y
+/* Copyright © 2019.  mutl3y
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,9 +54,9 @@ var metascanCmd = &cobra.Command{
 			app.SensorWarn(err, true)
 			return
 		}
-		if !c.Cached {
-			_ = c.Logout()
-		}
+
+		_ = c.Logout()
+
 	},
 }
 

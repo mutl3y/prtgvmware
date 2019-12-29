@@ -216,9 +216,6 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	}
 	defer func() { _ = v.Destroy(ctx) }()
 
-	//var vms2 []mo.VirtualMachine
-	//	kind := []string{"VirtualMachine"}
-	//vms := make([]mo.VirtualMachine, 0, 100)
 	id := types.ManagedObjectReference{
 		Type: "VirtualMachine", Value: moid,
 	}
@@ -233,28 +230,9 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	}
 	err = v.Properties(ctx, id, []string{"name", "summary", "snapshot", "guest", "runtime"}, &v0)
 	if err != nil {
-		return fmt.Errorf("v.properties %v", err)
+		return errCheck(name, id, fmt.Errorf("vm v.properties %v", err))
 	}
-	//if len(vms) != 1 {
-	//
-	//	type vmFailList struct {
-	//		name, moid string
-	//	}
-	//	out := make([]vmFailList, 0, 10)
-	//	for _, v := range vms {
-	//		out = append(out, vmFailList{v.Name, v.Self.Value})
-	//
-	//	}
-	//
-	//	return fmt.Errorf("expected a single vm, got %+v", out)
-	//}
 
-	//	v0 := vms[0]
-	//printJSON(false,item)
-	//vm, mets, err := c.vmMetricS(v0.Reference())
-	//if err != nil {
-	//	return fmt.Errorf("metrics %v", err)
-	//}
 	elapsed := time.Since(start)
 
 	var co int
@@ -267,11 +245,6 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	pr := newPrtgData(v0.Name)
 	pr.moid = id.Value
 	_ = pr.add(co, ps.SensorChannel{Channel: fmt.Sprintf("Snapshots Older Than %v", age), Unit: "Custom", CustomUnit: "Found", LimitErrorMsg: lim.ErrMsg, LimitMaxError: lim.MaxErr, LimitMaxWarning: lim.MaxWarn, LimitWarningMsg: lim.WarnMsg})
-
-	//	guestLimits := &LimitsStruct{
-	//		MinErr: 0.5,
-	//		ErrMsg: "tools not running",
-	//	}
 
 	gt := ps.SensorChannel{Channel: "guest tools running", Unit: "Custom", ValueLookup: "prtg.standardlookups.exchangedag.yesno.allstatesok"}
 	var gtv int
@@ -290,26 +263,6 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 		return fmt.Errorf("hostsystem properties failure %v", err)
 	}
 
-	pr.text = "on Host " + hs.Name
-	err = c.Metrics(v0.Reference(), pr, vmSummaryDefault, 20)
-	if err != nil {
-		return err
-	}
-	//for _, v := range mets {
-	//	if inStringSlice(v.Channel, vmSummaryDefault) {
-	//		st, err := singleStat(v.Value)
-	//		if err != nil {
-	//			return err
-	//		}
-	//
-	//		if st != "" {
-	//			err = pr.add(st, v)
-	//			if err != nil {
-	//				return err
-	//			}
-	//		}
-	//	}
-	//}
 	for _, v := range v0.Guest.Disk {
 		d := v.DiskPath
 		ca := v.Capacity
@@ -317,10 +270,30 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 		one := ca / 100
 		perc := free / one
 		_ = pr.add(free/1000, ps.SensorChannel{Channel: "free Bytes " + d, Unit: "BytesDisk", VolumeSize: "KiloByte", ShowChart: "0", ShowTable: "0"})
-		_ = pr.add(perc, ps.SensorChannel{Channel: "free Space (Percent) " + d, Unit: "Percent", LimitMinWarning: "20", LimitMinError: "10", LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space"})
+		_ = pr.add(perc, ps.SensorChannel{Channel: "free Space (Percent) " + d, Unit: "Percent", LimitMinWarning: "20", LimitMinError: "10", LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space", LimitMode: "1"})
 	}
+	if v0.Runtime.PowerState == "poweredOn" {
+		pr.text = "OK running on Host " + hs.Name
+		err = c.Metrics(v0.Reference(), pr, vmSummaryDefault, 20)
+		if err != nil {
+			return err
+		}
+	} else {
+		pr.text = fmt.Sprint(v0.Runtime.PowerState)
+	}
+
 	err = pr.print(elapsed, txt)
 	_ = c.vmTracker(v0.Name, hs.Name)
+	return err
+}
+
+func errCheck(name string, oid types.ManagedObjectReference, err error) error {
+	e := err.Error()
+	switch {
+	case strings.Contains(e, "has already been deleted"):
+		err = fmt.Errorf("object not found %v %v", name, oid)
+	default:
+	}
 	return err
 }
 
@@ -412,34 +385,34 @@ func (c *Client) DsSummary(name, moid string, lim *LimitsStruct, js bool) (err e
 
 	}
 
-	v0 := mo.Datastore{}
-	err = v.Properties(ctx, id, []string{"name", "summary"}, &v0)
+	ds := mo.Datastore{}
+	err = v.Properties(ctx, id, []string{"name", "summary"}, &ds)
 	if err != nil {
-		return fmt.Errorf("ds object %v", err)
+		return errCheck(name, id, fmt.Errorf("ds v.properties %v", err))
 	}
-	pr := newPrtgData(v0.Name)
+	pr := newPrtgData(ds.Name)
 	pr.moid = id.Value
-
-	whole := v0.Summary.Capacity
-	free := v0.Summary.FreeSpace
+	whole := ds.Summary.Capacity
+	free := ds.Summary.FreeSpace
 	p1 := whole / 100
 	if p1 > 0 {
 		freep := free / p1
 		provisioned := 100 - freep
-		_ = pr.add(freep, ps.SensorChannel{Channel: "Free space (Percent)", Unit: "Percent", DecimalMode: "1", LimitMinWarning: lim.MinWarn, LimitMinError: lim.MinErr, LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space"})
+		_ = pr.add(freep, ps.SensorChannel{Channel: "Free space (Percent)", Unit: "Percent", DecimalMode: "1", LimitMinWarning: lim.MinWarn, LimitMinError: lim.MinErr, LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space", LimitMode: "1"})
 		_ = pr.add(provisioned, ps.SensorChannel{Channel: "Used Space (Percent)", Unit: "Percent", DecimalMode: "1"})
 
 	}
 	_ = pr.add(whole, ps.SensorChannel{Channel: "Total capacity", Unit: "BytesDisk", VolumeSize: "KiloByte"})
 	_ = pr.add(free, ps.SensorChannel{Channel: "Free Bytes", Unit: "BytesDisk", VolumeSize: "KiloByte", ShowTable: "0", ShowChart: "0"})
 	mm := "0"
-	if v0.Summary.MaintenanceMode != "normal" {
+	if ds.Summary.MaintenanceMode != "normal" {
 		mm = "1"
 	}
 
 	_ = pr.add(mm, ps.SensorChannel{Channel: "Maintenance Mode", Unit: "Custom", LimitMaxWarning: "1", ValueLookup: "prtg.standardlookups.boolean.statefalseok"})
+	_ = pr.add(boolToInt(ds.Summary.Accessible), ps.SensorChannel{Channel: "Accessible", Unit: "Custom", LimitMaxWarning: "1", ValueLookup: "prtg.standardlookups.boolean.statetrueok"})
 
-	err = c.Metrics(v0.Reference(), pr, dsSummaryDefault, 1800)
+	err = c.Metrics(ds.Reference(), pr, dsSummaryDefault, 1800)
 	if err != nil {
 		return err
 	}
@@ -472,7 +445,7 @@ func (c *Client) VdsSummary(name, moid string, js bool) (err error) {
 	vds := mo.VmwareDistributedVirtualSwitch{}
 	err = v.Properties(ctx, id, nil, &vds)
 	if err != nil {
-		return fmt.Errorf("vds properties %v", err)
+		return errCheck(name, id, fmt.Errorf("vds v.properties %v", err))
 	}
 
 	elapsed := time.Since(start)
@@ -495,7 +468,7 @@ func (c *Client) VdsSummary(name, moid string, js bool) (err error) {
 	return
 }
 
-//HostSummary  stats for a hostsystem
+//HostSummary  stats for a host system
 func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	start := time.Now()
 
@@ -519,7 +492,7 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	hs := mo.HostSystem{}
 	err = v.Properties(ctx, id, nil, &hs)
 	if err != nil {
-		return fmt.Errorf("hs properties %v", err)
+		return errCheck(name, id, fmt.Errorf("hs v.properties %v", err))
 	}
 
 	pr := newPrtgData("HostSummary")
@@ -532,12 +505,10 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 		_ = pr.add(1, ps1)
 		_ = pr.print(time.Since(start), false)
 		return
-	case "unknown":
+	default:
 		_ = pr.add(2, ps1)
 		_ = pr.print(time.Since(start), false)
 		return
-	default:
-		printJSON(false, hs.Runtime.PowerState)
 	}
 
 	elapsed := time.Since(start)
@@ -562,13 +533,12 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	_ = pr.add(boolToInt(hs.Runtime.InMaintenanceMode), ps.SensorChannel{Channel: "Maintenance Mode", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok"})
 	_ = pr.add(triggeredAlarms(hs.TriggeredAlarmState), ps.SensorChannel{Channel: "Triggered Alarms", Unit: "Count", LimitMaxWarning: "1", LimitWarningMsg: "triggered alarms present"})
 
-	err = c.Metrics(id, pr, hsSummaryDefault, 20)
-	if err != nil {
-		return
-	}
+	pr.text = fmt.Sprint(hs.Runtime.PowerState)
+
 	_ = pr.print(elapsed, js)
 	return
 }
+
 func (c *Client) GetMaxQueryMetrics(ctx context.Context) (int, error) {
 
 	om := object.NewOptionManager(c.c, *c.c.ServiceContent.Setting)
@@ -596,10 +566,8 @@ func (c *Client) GetMaxQueryMetrics(ctx context.Context) (int, error) {
 	ver := c.c.ServiceContent.About.Version
 	parts := strings.Split(ver, ".")
 	if len(parts) < 2 {
-		fmt.Printf("vCenter returned an invalid version string: %s. Using default query size=64", ver)
 		return 64, nil
 	}
-	fmt.Printf("vCenter version is: %s", ver)
 	major, err := strconv.Atoi(parts[0])
 	if err != nil {
 		return 0, err
@@ -641,7 +609,7 @@ func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []s
 	}
 	psum, err := perfManager.ProviderSummary(ctx, mor)
 	if err != nil {
-		return fmt.Errorf("provider summary %v", err)
+		return fmt.Errorf("object not found %v", mor)
 	}
 	if !psum.CurrentSupported {
 		fmt.Printf("%v performance metrics not available\n", mor)
@@ -701,9 +669,9 @@ func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []s
 					continue
 				}
 			}
-			if instance == "" {
-				instance = "-"
-			}
+			//if instance == "" {
+			//	instance = "-"
+			//}
 
 			units := counter.UnitInfo.GetElementDescription().Label
 
@@ -821,8 +789,6 @@ func metType(u, s string) (unit, size, customUnit string) {
 		default:
 			unit = "Custom"
 			customUnit = s
-			printJSON(false, "missed KBps type", s)
-
 		}
 	case "MHz":
 		unit = Custom
@@ -837,8 +803,6 @@ func metType(u, s string) (unit, size, customUnit string) {
 		customUnit = "Watt"
 	default:
 		size = u
-		printJSON(false, u)
-
 	}
 
 	return

@@ -81,6 +81,9 @@ func (c *Client) list(tagIds []string, tm *TagMap) (err error) {
 
 	for _, tag := range tagIds {
 		err = c.getObjIds(tag, tm)
+		if err != nil {
+			return err
+		}
 	}
 
 	return
@@ -100,7 +103,10 @@ func (c *Client) getObjIds(tag string, tm *TagMap) (err error) {
 		if strings.Contains(err.Error(), "404 Not Found") {
 			return nil
 		}
-		return fmt.Errorf("getObjIds issue %v", err)
+		if !strings.Contains(err.Error(), "500 Server Error") {
+			return fmt.Errorf("error listing tags, server error, check vpxd.log\n%v", err)
+		}
+		return fmt.Errorf("GetAttachedObjectsOnTags %v", err)
 	}
 
 	if len(objs) == 0 {
@@ -156,8 +162,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.VirtualApp
 		err = v.Properties(ctx, id, []string{"vm", "datastore", "network"}, &wd)
 		if err != nil {
-			err = fmt.Errorf("vapp Properties %v", err)
-			return nil, err
+			return nil, errCheck("", id, fmt.Errorf("vapp v.properties %v", err))
 		}
 
 		rtnData = append(rtnData, wd.Vm...)
@@ -168,8 +173,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.ClusterComputeResource
 		err = v.Properties(ctx, id, []string{"network", "host", "datastore"}, &wd)
 		if err != nil {
-			err = fmt.Errorf("cluster Properties %v", err)
-			return nil, err
+			return nil, errCheck("cluster", id, fmt.Errorf("cluster v.properties %v", err))
 		}
 		rtnData = append(rtnData, wd.Network...)
 		rtnData = append(rtnData, wd.Host...)
@@ -179,8 +183,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.Datacenter
 		err = v.Properties(ctx, id, []string{"hostFolder", "datastoreFolder", "networkFolder"}, &wd)
 		if err != nil {
-			err = fmt.Errorf("ds Properties %v", err)
-			return nil, err
+			return nil, errCheck("ds", id, fmt.Errorf("ds v.properties %v", err))
 		}
 		x := make([]types.ManagedObjectReference, 0, 3)
 
@@ -196,8 +199,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 		var wd mo.Folder
 		err = v.Properties(ctx, id, []string{"childType", "childEntity"}, &wd)
 		if err != nil {
-			err = fmt.Errorf("folder properties %v", err)
-			return nil, err
+			return nil, errCheck("folder", id, fmt.Errorf("folder v.properties %v", err))
 		}
 		for _, id := range wd.ChildEntity {
 			d, err := c.getChildIds(id)
@@ -206,7 +208,7 @@ func (c *Client) getChildIds(id types.ManagedObjectReference) (rtnData []types.M
 			}
 			rtnData = append(rtnData, d...)
 		}
-
+	case "StoragePod", "Network":
 	default:
 		printJSON(false, "getChildIds, missed type, Please log an issue on Github", id.Type)
 		return nil, nil

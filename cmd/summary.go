@@ -1,5 +1,4 @@
-/*
- * Copyright © 2019.  mutl3y
+/* Copyright © 2019.  mutl3y
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,7 +84,7 @@ counters included by default are
 
 		err = c.VMSummary(name, oid, &lim, snapAge, js, extraSensors)
 		if err != nil {
-			app.SensorWarn(fmt.Errorf("get summary error: %v", err), true)
+			app.SensorWarn(err, true)
 
 		}
 		//if !c.Cached {

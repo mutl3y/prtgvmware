@@ -60,6 +60,7 @@ func (p *prtgData) add(value interface{}, item ps.SensorChannel) (err error) {
 	if item.Unit == "Percent" {
 		item.DecimalMode = "1"
 	}
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.items = append(p.items, item)

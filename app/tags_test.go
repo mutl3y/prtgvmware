@@ -19,16 +19,12 @@ package app
 import (
 	"context"
 	"github.com/vmware/govmomi/vim25/types"
-	"net/url"
 	"testing"
 	"time"
 )
 
 func TestClient_tagList(t *testing.T) {
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
+
 	tests := []struct {
 		name       string
 		tagIds     []string
@@ -40,7 +36,7 @@ func TestClient_tagList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatal("cant get client")
 			}
@@ -92,10 +88,7 @@ func Test_tagMap_add(t *testing.T) {
 }
 
 func Test_tagMap_check(t *testing.T) {
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
+
 	tests := []struct {
 		name, objID, tag string
 		found, wantErr   bool
@@ -107,7 +100,7 @@ func Test_tagMap_check(t *testing.T) {
 		{"5", "vm-19", "PRTG", false, true},
 	}
 
-	c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
+	c, err := NewClient(u, user, passwd, true)
 	if err != nil {
 		t.Fatal("cant get client")
 	}
@@ -130,10 +123,6 @@ func Test_tagMap_check(t *testing.T) {
 }
 
 func TestClient_GetVmsOnTags(t *testing.T) {
-	u, err := url.Parse("https://192.168.0.201/sdk")
-	if err != nil {
-		t.Fatalf("failed to parse url")
-	}
 
 	gotRtnMap := NewTagMap()
 	tests := []struct {
@@ -147,7 +136,7 @@ func TestClient_GetVmsOnTags(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			timeout := context.Background()
 			timeout, _ = context.WithTimeout(timeout, time.Second)
-			c, err := NewClient(u, "prtg@heynes.local", ".l3tm31n", true)
+			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatal("cant get client")
 			}
