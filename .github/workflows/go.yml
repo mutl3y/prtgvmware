@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     branches:
-      - v1.0.5
+      - v1.0.6
     # todo make sure you update this last, triggers build
     tags:
       - Release
@@ -69,13 +69,12 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           # todo make sure you update this
-          release_name: v1.0.5
+          release_name: ${{ on.push.branches }}
           body: |
             Changes in this Release
             - automated build
-            - added vm tracker for DR programdata/paessler/prtgvmware/vmTracker
             draft: false
-            prerelease: false
+            prerelease: true
 
       - name: Download artifact
         uses: actions/download-artifact@v1

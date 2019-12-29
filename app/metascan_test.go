@@ -17,7 +17,6 @@
 package app
 
 import (
-	"context"
 	"testing"
 	"time"
 )
@@ -34,8 +33,7 @@ func TestClient_Metascan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			ctx, _ = context.WithTimeout(ctx, time.Second)
+
 			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatal("cant get client")

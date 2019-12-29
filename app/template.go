@@ -198,6 +198,9 @@ func (c *Client) DynTemplate(tags []string, Age time.Duration, tplate string) er
 
 	tm := NewTagMap()
 	err := c.list(tags, tm)
+	if err != nil {
+		return err
+	}
 	for _, tag := range tags {
 		err := c.getObjIds(tag, tm)
 		if err != nil {

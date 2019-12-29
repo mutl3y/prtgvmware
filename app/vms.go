@@ -539,7 +539,7 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	return
 }
 
-func (c *Client) GetMaxQueryMetrics(ctx context.Context) (int, error) {
+func (c *Client) getMaxQueryMetrics(ctx context.Context) (int, error) {
 
 	om := object.NewOptionManager(c.c, *c.c.ServiceContent.Setting)
 	res, err := om.Query(ctx, "config.vpxd.stats.maxQueryMetrics")
@@ -603,9 +603,9 @@ func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []s
 		IntervalId: interval,
 	}
 
-	maxQuery, err := c.GetMaxQueryMetrics(ctx)
+	maxQuery, err := c.getMaxQueryMetrics(ctx)
 	if err != nil {
-		return fmt.Errorf("GetMaxQueryMetrics %v", err)
+		return fmt.Errorf("getMaxQueryMetrics %v", err)
 	}
 	psum, err := perfManager.ProviderSummary(ctx, mor)
 	if err != nil {
