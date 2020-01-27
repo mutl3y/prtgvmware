@@ -544,7 +544,7 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 			}
 		}
 	}
-	_ = pr.add(triggered, ps.SensorChannel{Channel: "storage_path_check", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok", LimitErrorMsg: "check storage paths"})
+	_ = pr.add(triggered, ps.SensorChannel{Channel: "storage_path_error", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok", LimitErrorMsg: "check storage paths"})
 
 	_ = pr.print(elapsed, js)
 	return
