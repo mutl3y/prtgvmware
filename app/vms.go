@@ -534,6 +534,17 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	_ = pr.add(triggeredAlarms(hs.TriggeredAlarmState), ps.SensorChannel{Channel: "Triggered Alarms", Unit: "Count", LimitMaxWarning: "1", LimitWarningMsg: "triggered alarms present"})
 
 	pr.text = fmt.Sprint(hs.Runtime.PowerState)
+	diskPathDetails := hs.Config.StorageDevice.MultipathInfo
+	var triggered bool
+	for _, lun := range diskPathDetails.Lun {
+		for _, path := range lun.Path {
+			if !*path.IsWorkingPath {
+				triggered = true
+				pr.text = "Path failure " + path.Name
+			}
+		}
+	}
+	_ = pr.add(triggered, ps.SensorChannel{Channel: "storage_path_check", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok", LimitErrorMsg: "check storage paths"})
 
 	_ = pr.print(elapsed, js)
 	return
