@@ -265,6 +265,9 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 
 	for _, v := range v0.Guest.Disk {
 		d := v.DiskPath
+		if strings.Contains(d, "overlay") {
+			continue
+		}
 		ca := v.Capacity
 		free := v.FreeSpace
 		one := ca / 100
