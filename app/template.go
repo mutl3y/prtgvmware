@@ -221,7 +221,7 @@ func (c *Client) DynTemplate(tags []string, Age time.Duration, tplate string) er
 			Meta:     "",
 			Requires: "ping",
 			Createdata: Createdata{Name: v.Name, Tags: strings.Join(tags, ","), Errorintervalsdown: "5",
-				Autoacknowledge: "1", Priority: "3", Exefile: filepath.Base(os.Args[0]), Mutex: "prtgvmware",
+				Autoacknowledge: v.Autoacknowledge, Priority: "3", Exefile: filepath.Base(os.Args[0]), Mutex: "prtgvmware",
 				Exeparams: v.Params,
 			},
 		}
