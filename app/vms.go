@@ -207,6 +207,8 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	vmSummaryDefault = append(vmSummaryDefault, sensors...)
 	start := time.Now()
 	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	if c.m == nil {
 		return fmt.Errorf("no manager")
 	}
@@ -251,7 +253,6 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	switch v0.Guest.ToolsRunningStatus {
 	case "guestToolsRunning":
 		gtv = 1
-		//pr.add(v0.Runtime.)
 	default:
 		gtv = 0
 
@@ -369,7 +370,7 @@ func (c *Client) DsSummary(name, moid string, lim *LimitsStruct, js bool) (err e
 
 	start := time.Now()
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
 	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"Datastore"}, true)
 	if err != nil {
 		return nil
@@ -429,7 +430,8 @@ func (c *Client) VdsSummary(name, moid string, js bool) (err error) {
 	start := time.Now()
 
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, time.Second)
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"VmwareDistributedVirtualSwitch"}, true)
 	if err != nil {
 		return fmt.Errorf("create container %v", err)
@@ -549,7 +551,10 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 		}
 	}
 	_ = pr.add(boolToInt(triggered), ps.SensorChannel{Channel: "storage_path_error", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok", LimitErrorMsg: "check storage paths"})
-
+	err = c.Metrics(id, pr, hsSummaryDefault, 20)
+	if err != nil {
+		return
+	}
 	_ = pr.print(elapsed, js)
 	return
 }
@@ -662,7 +667,6 @@ func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []s
 		var hide bool
 		counter := counters[v.Name]
 		instance := v.Instance
-
 		if inStringSlice(v.Name, str) {
 			if instance != "" {
 				// special handling of metric names using instance data
