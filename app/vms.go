@@ -306,6 +306,8 @@ func errCheck(name string, oid types.ManagedObjectReference, err error) error {
 func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *LimitsStruct, age time.Duration, txt bool) (err error) {
 	start := time.Now()
 	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	m := view.NewManager(c.c)
 
 	v, err := m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
@@ -479,6 +481,8 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	start := time.Now()
 
 	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"HostSystem"}, true)
 	if err != nil {
 		return fmt.Errorf("create container %v", err)
@@ -602,6 +606,8 @@ func (c *Client) getMaxQueryMetrics(ctx context.Context) (int, error) {
 func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []string, interval int32) (err error) {
 
 	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	perfManager := performance.NewManager(c.c)
 
 	// Retrieve counters
