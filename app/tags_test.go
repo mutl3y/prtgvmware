@@ -17,10 +17,8 @@
 package app
 
 import (
-	"context"
 	"github.com/vmware/govmomi/vim25/types"
 	"testing"
-	"time"
 )
 
 func TestClient_tagList(t *testing.T) {
@@ -134,8 +132,6 @@ func TestClient_GetVmsOnTags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			timeout := context.Background()
-			timeout, _ = context.WithTimeout(timeout, time.Second)
 			c, err := NewClient(u, user, passwd, true)
 			if err != nil {
 				t.Fatal("cant get client")

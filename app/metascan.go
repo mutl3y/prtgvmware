@@ -32,11 +32,12 @@ import (
 
 // Item is used in templates
 type Item struct {
-	Name        string `xml:"name,omitempty"`
-	ID          string `xml:"id,omitempty"`
-	Exefile     string `xml:"exefile"`
-	Params      string `xml:"params"`
-	Displayname string `xml:"displayname,attr,omitempty"`
+	Name            string `xml:"name,omitempty"`
+	ID              string `xml:"id,omitempty"`
+	Exefile         string `xml:"exefile"`
+	Params          string `xml:"params"`
+	Displayname     string `xml:"displayname,attr,omitempty"`
+	Autoacknowledge string `xml:"autoacknowledge,attr,omitempty"`
 }
 
 type prtg struct {
@@ -144,32 +145,36 @@ func (c *Client) obMeta(tm *TagMap, moidMap *moidNames, Age time.Duration) (meta
 		switch moidMap.Gettype(id) {
 		case "VirtualMachine":
 			meta.Items = append(meta.Items, Item{
-				Name:        na,
-				ID:          id,
-				Exefile:     filepath.Base(os.Args[0]),
-				Params:      fmt.Sprintf("summary %v --snapAge %v", creds, Age),
-				Displayname: na,
+				Name:            na,
+				ID:              id,
+				Exefile:         filepath.Base(os.Args[0]),
+				Params:          fmt.Sprintf("summary %v --snapAge %v", creds, Age),
+				Displayname:     na,
+				Autoacknowledge: "0",
 			})
 		case "Datastore":
 			meta.Items = append(meta.Items, Item{
-				Name:    "DS " + na,
-				ID:      id,
-				Exefile: filepath.Base(os.Args[0]),
-				Params:  fmt.Sprintf("dsSummary %v", creds),
+				Name:            "DS " + na,
+				ID:              id,
+				Exefile:         filepath.Base(os.Args[0]),
+				Params:          fmt.Sprintf("dsSummary %v", creds),
+				Autoacknowledge: "0",
 			})
 		case "HostSystem":
 			meta.Items = append(meta.Items, Item{
-				Name:    "Host " + na,
-				ID:      id,
-				Exefile: filepath.Base(os.Args[0]),
-				Params:  fmt.Sprintf("hsSummary %v", creds),
+				Name:            "Host " + na,
+				ID:              id,
+				Exefile:         filepath.Base(os.Args[0]),
+				Params:          fmt.Sprintf("hsSummary %v", creds),
+				Autoacknowledge: "0",
 			})
 		case "VmwareDistributedVirtualSwitch":
 			meta.Items = append(meta.Items, Item{
-				Name:    "VDS " + na,
-				ID:      id,
-				Exefile: filepath.Base(os.Args[0]),
-				Params:  fmt.Sprintf("vdsSummary %v", creds),
+				Name:            "VDS " + na,
+				ID:              id,
+				Exefile:         filepath.Base(os.Args[0]),
+				Params:          fmt.Sprintf("vdsSummary %v", creds),
+				Autoacknowledge: "0",
 			})
 		case "", "ClusterComputeResource", "Folder", "VirtualApp", "Datacenter", "DistributedVirtualPortgroup":
 		default:

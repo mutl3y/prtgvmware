@@ -1,4 +1,4 @@
-/* Copyright © 2019.  mutl3y
+/*Copyright © 2019.  mutl3y
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "prtgvmware",
 	Short:   "VMware sensors for prtg",
-	Version: "v1.0.5", //todo make sure you update this
+	Version: "v1.0.6", //todo make sure you update this
 	Long: `advanced sensors for VMware
 
 this app exposes all the common stats for vm's, Hypervisor's, VDS & Datastore's

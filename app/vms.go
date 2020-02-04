@@ -40,7 +40,7 @@ import (
 var (
 	vmSummaryDefault = []string{
 		"disk.read.average", "disk.write.average", "disk.usage.average",
-		"cpu.readiness.average", "cpu.usage.average",
+		"cpu.readiness.average", "cpu.usage.average", "sys.uptime.latest",
 		"mem.active.average", "mem.consumed.average", "mem.usage.average",
 		"net.bytesRx.average", "net.bytesTx.average", "net.usage.average",
 		"datastore.datastoreNormalReadLatency.latest", "datastore.datastoreNormalWriteLatency.latest",
@@ -207,6 +207,8 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	vmSummaryDefault = append(vmSummaryDefault, sensors...)
 	start := time.Now()
 	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	if c.m == nil {
 		return fmt.Errorf("no manager")
 	}
@@ -265,11 +267,14 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 
 	for _, v := range v0.Guest.Disk {
 		d := v.DiskPath
+		if strings.Contains(d, "overlay") {
+			continue
+		}
 		ca := v.Capacity
 		free := v.FreeSpace
 		one := ca / 100
 		perc := free / one
-		_ = pr.add(free/1000, ps.SensorChannel{Channel: "free Bytes " + d, Unit: "BytesDisk", VolumeSize: "KiloByte", ShowChart: "0", ShowTable: "0"})
+		_ = pr.add(free, ps.SensorChannel{Channel: "free Bytes " + d, Unit: "BytesDisk", VolumeSize: "KiloByte", ShowChart: "0", ShowTable: "0"})
 		_ = pr.add(perc, ps.SensorChannel{Channel: "free Space (Percent) " + d, Unit: "Percent", LimitMinWarning: "20", LimitMinError: "10", LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space", LimitMode: "1"})
 	}
 	if v0.Runtime.PowerState == "poweredOn" {
@@ -301,6 +306,8 @@ func errCheck(name string, oid types.ManagedObjectReference, err error) error {
 func (c *Client) SnapShotsOlderThan(f property.Filter, tagIds []string, lim *LimitsStruct, age time.Duration, txt bool) (err error) {
 	start := time.Now()
 	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	m := view.NewManager(c.c)
 
 	v, err := m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
@@ -365,7 +372,7 @@ func (c *Client) DsSummary(name, moid string, lim *LimitsStruct, js bool) (err e
 
 	start := time.Now()
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
 	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"Datastore"}, true)
 	if err != nil {
 		return nil
@@ -425,7 +432,8 @@ func (c *Client) VdsSummary(name, moid string, js bool) (err error) {
 	start := time.Now()
 
 	ctx := context.Background()
-	ctx, _ = context.WithTimeout(ctx, time.Second)
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"VmwareDistributedVirtualSwitch"}, true)
 	if err != nil {
 		return fmt.Errorf("create container %v", err)
@@ -473,6 +481,8 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	start := time.Now()
 
 	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	v, err := c.m.CreateContainerView(ctx, c.c.ServiceContent.RootFolder, []string{"HostSystem"}, true)
 	if err != nil {
 		return fmt.Errorf("create container %v", err)
@@ -534,12 +544,26 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 	_ = pr.add(triggeredAlarms(hs.TriggeredAlarmState), ps.SensorChannel{Channel: "Triggered Alarms", Unit: "Count", LimitMaxWarning: "1", LimitWarningMsg: "triggered alarms present"})
 
 	pr.text = fmt.Sprint(hs.Runtime.PowerState)
-
+	diskPathDetails := hs.Config.StorageDevice.MultipathInfo
+	var triggered bool
+	for _, lun := range diskPathDetails.Lun {
+		for _, path := range lun.Path {
+			if !*path.IsWorkingPath {
+				triggered = true
+				pr.text = "Path failure " + path.Name
+			}
+		}
+	}
+	_ = pr.add(boolToInt(triggered), ps.SensorChannel{Channel: "storage_path_error", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok", LimitErrorMsg: "check storage paths"})
+	err = c.Metrics(id, pr, hsSummaryDefault, 20)
+	if err != nil {
+		return
+	}
 	_ = pr.print(elapsed, js)
 	return
 }
 
-func (c *Client) GetMaxQueryMetrics(ctx context.Context) (int, error) {
+func (c *Client) getMaxQueryMetrics(ctx context.Context) (int, error) {
 
 	om := object.NewOptionManager(c.c, *c.c.ServiceContent.Setting)
 	res, err := om.Query(ctx, "config.vpxd.stats.maxQueryMetrics")
@@ -582,6 +606,8 @@ func (c *Client) GetMaxQueryMetrics(ctx context.Context) (int, error) {
 func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []string, interval int32) (err error) {
 
 	ctx := context.Background()
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
+
 	perfManager := performance.NewManager(c.c)
 
 	// Retrieve counters
@@ -603,9 +629,9 @@ func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []s
 		IntervalId: interval,
 	}
 
-	maxQuery, err := c.GetMaxQueryMetrics(ctx)
+	maxQuery, err := c.getMaxQueryMetrics(ctx)
 	if err != nil {
-		return fmt.Errorf("GetMaxQueryMetrics %v", err)
+		return fmt.Errorf("getMaxQueryMetrics %v", err)
 	}
 	psum, err := perfManager.ProviderSummary(ctx, mor)
 	if err != nil {
@@ -675,11 +701,10 @@ func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []s
 
 			units := counter.UnitInfo.GetElementDescription().Label
 
-			// special handling for power as this returns an int
+			// special handling for int's
 			fixedPointFloat := float64(v.Value[0]) / 100
-			if strings.Contains(v.Name, "power") {
+			if strings.Contains(v.Name, "power") || strings.Contains(v.Name, "sys.uptime") {
 				fixedPointFloat = float64(v.Value[0])
-
 			}
 
 			// get PRTG version of vmware metric, eg type % == Percent
@@ -798,6 +823,8 @@ func metType(u, s string) (unit, size, customUnit string) {
 		size = Temperature
 	case "µs":
 		size = Custom
+	case "s":
+		unit = "TimeSeconds"
 	case "W":
 		size = Custom
 		customUnit = "Watt"

@@ -231,6 +231,9 @@ func (c *Client) save2Disk(fn, password string) (err error) {
 			return err
 		}
 		ccEncrypt, err := Encrypt(cc, password)
+		if err != nil {
+			return err
+		}
 		err = ioutil.WriteFile(ccfn, ccEncrypt, 0644)
 		if err != nil {
 			return err
