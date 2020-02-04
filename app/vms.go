@@ -40,7 +40,7 @@ import (
 var (
 	vmSummaryDefault = []string{
 		"disk.read.average", "disk.write.average", "disk.usage.average",
-		"cpu.readiness.average", "cpu.usage.average",
+		"cpu.readiness.average", "cpu.usage.average", "sys.uptime.latest",
 		"mem.active.average", "mem.consumed.average", "mem.usage.average",
 		"net.bytesRx.average", "net.bytesTx.average", "net.usage.average",
 		"datastore.datastoreNormalReadLatency.latest", "datastore.datastoreNormalWriteLatency.latest",
@@ -251,6 +251,7 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 	switch v0.Guest.ToolsRunningStatus {
 	case "guestToolsRunning":
 		gtv = 1
+		//pr.add(v0.Runtime.)
 	default:
 		gtv = 0
 
@@ -272,7 +273,7 @@ func (c *Client) VMSummary(name, moid string, lim *LimitsStruct, age time.Durati
 		free := v.FreeSpace
 		one := ca / 100
 		perc := free / one
-		_ = pr.add(free/1000, ps.SensorChannel{Channel: "free Bytes " + d, Unit: "BytesDisk", VolumeSize: "KiloByte", ShowChart: "0", ShowTable: "0"})
+		_ = pr.add(free, ps.SensorChannel{Channel: "free Bytes " + d, Unit: "BytesDisk", VolumeSize: "KiloByte", ShowChart: "0", ShowTable: "0"})
 		_ = pr.add(perc, ps.SensorChannel{Channel: "free Space (Percent) " + d, Unit: "Percent", LimitMinWarning: "20", LimitMinError: "10", LimitWarningMsg: "Warning Low Space", LimitErrorMsg: "Critical disk space", LimitMode: "1"})
 	}
 	if v0.Runtime.PowerState == "poweredOn" {
@@ -547,7 +548,7 @@ func (c *Client) HostSummary(name, moid string, js bool) (err error) {
 			}
 		}
 	}
-	_ = pr.add(triggered, ps.SensorChannel{Channel: "storage_path_error", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok", LimitErrorMsg: "check storage paths"})
+	_ = pr.add(boolToInt(triggered), ps.SensorChannel{Channel: "storage_path_error", Unit: "Custom", VolumeSize: "Custom", ValueLookup: "prtg.standardlookups.boolean.statefalseok", LimitErrorMsg: "check storage paths"})
 
 	_ = pr.print(elapsed, js)
 	return
@@ -661,6 +662,7 @@ func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []s
 		var hide bool
 		counter := counters[v.Name]
 		instance := v.Instance
+
 		if inStringSlice(v.Name, str) {
 			if instance != "" {
 				// special handling of metric names using instance data
@@ -689,11 +691,10 @@ func (c *Client) Metrics(mor types.ManagedObjectReference, pr *prtgData, str []s
 
 			units := counter.UnitInfo.GetElementDescription().Label
 
-			// special handling for power as this returns an int
+			// special handling for int's
 			fixedPointFloat := float64(v.Value[0]) / 100
-			if strings.Contains(v.Name, "power") {
+			if strings.Contains(v.Name, "power") || strings.Contains(v.Name, "sys.uptime") {
 				fixedPointFloat = float64(v.Value[0])
-
 			}
 
 			// get PRTG version of vmware metric, eg type % == Percent
@@ -812,6 +813,8 @@ func metType(u, s string) (unit, size, customUnit string) {
 		size = Temperature
 	case "µs":
 		size = Custom
+	case "s":
+		unit = "TimeSeconds"
 	case "W":
 		size = Custom
 		customUnit = "Watt"
