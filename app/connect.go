@@ -130,12 +130,12 @@ func clientFromDisk(fn, password string, u *url.URL) (c Client, err error) {
 	// check files exist
 	_, err = os.Stat(ccfn)
 	if err != nil {
-		fmt.Println("12")
+		fmt.Println(err)
 		return
 	}
 	_, err = os.Stat(rsfn)
 	if err != nil {
-		fmt.Println("13")
+		fmt.Println(err)
 		return
 	}
 
