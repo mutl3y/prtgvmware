@@ -28,7 +28,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "prtgvmware",
 	Short:   "VMware sensors for prtg",
-	Version: "v1.0.7", //todo make sure you update this
+	Version: "v1.0.8", //todo make sure you update this
 	Long: `advanced sensors for VMware
 
 this app exposes all the common stats for vm's, Hypervisor's, VDS & Datastore's
